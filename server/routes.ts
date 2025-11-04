@@ -18,16 +18,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all tracking numbers (always use master tracking numbers for comparison)
+  // Get all tracking numbers (including all child tracking numbers for comparison)
   app.get("/api/tracking-numbers/all", async (req, res) => {
     try {
       const shipments = await storage.getAllShipments();
       const allTrackingNumbers = new Set<string>();
 
-      // Always return the master tracking number for each shipment
-      // This is what you physically scan on the package
+      // Return all child tracking numbers (what you physically scan on each package)
       for (const shipment of shipments) {
-        allTrackingNumbers.add(shipment.trackingNumber);
+        // If shipment has child tracking numbers, add all of them
+        if (shipment.childTrackingNumbers && shipment.childTrackingNumbers.length > 0) {
+          shipment.childTrackingNumbers.forEach(tn => allTrackingNumbers.add(tn));
+        } else {
+          // If no child tracking numbers, add the master tracking number
+          allTrackingNumbers.add(shipment.trackingNumber);
+        }
       }
 
       res.json(Array.from(allTrackingNumbers).sort());
