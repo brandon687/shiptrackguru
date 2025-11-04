@@ -39,6 +39,26 @@ export function SyncStatus({ lastSynced, onSync }: SyncStatusProps) {
     }
   };
 
+  const resetFlagsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/shipments/reset-flags");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
+      toast({
+        title: "Flags Reset",
+        description: "All scanned/completed flags have been reset to test tracking workflow.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset flags",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetAllMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest("DELETE", "/api/shipments");
@@ -100,7 +120,19 @@ export function SyncStatus({ lastSynced, onSync }: SyncStatusProps) {
         <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
         {isSyncing ? "Refreshing..." : "Refresh Tracking"}
       </Button>
-      
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => resetFlagsMutation.mutate()}
+        disabled={resetFlagsMutation.isPending}
+        data-testid="button-reset-flags"
+        className="gap-2"
+      >
+        <RefreshCw className={`h-4 w-4 ${resetFlagsMutation.isPending ? "animate-spin" : ""}`} />
+        {resetFlagsMutation.isPending ? "Resetting..." : "Reset Flags"}
+      </Button>
+
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button
