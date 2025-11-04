@@ -92,12 +92,28 @@ export class FedExService {
         }
       );
 
+      // Log the full response structure for debugging
+      console.log("=== FULL FEDEX API RESPONSE ===");
+      console.log(JSON.stringify(response.data, null, 2));
+      console.log("================================");
+
       const trackingResult = response.data.output?.completeTrackResults?.[0];
       if (!trackingResult) {
+        console.warn("No tracking results in FedEx response");
         return null;
       }
 
       const latestStatus = trackingResult.trackResults?.[0];
+
+      // Log the structure we're working with
+      console.log("Tracking result structure:", {
+        hasTrackResults: !!trackingResult.trackResults,
+        trackResultsLength: trackingResult.trackResults?.length,
+        hasLatestStatusDetail: !!latestStatus?.latestStatusDetail,
+        statusCode: latestStatus?.latestStatusDetail?.code,
+        hasScanEvents: !!latestStatus?.scanEvents,
+        scanEventsLength: latestStatus?.scanEvents?.length,
+      });
 
       // Store the full raw response for extracting child tracking numbers later
       const result = {
@@ -112,6 +128,13 @@ export class FedExService {
           description: event.eventDescription,
         })),
       };
+
+      console.log("Parsed result:", {
+        status: result.status,
+        estimatedDelivery: result.estimatedDelivery,
+        lastLocation: result.lastLocation,
+        eventsCount: result.events.length,
+      });
 
       // Add the full raw API response for debugging and child tracking number extraction
       (result as any).rawApiResponse = response.data;
