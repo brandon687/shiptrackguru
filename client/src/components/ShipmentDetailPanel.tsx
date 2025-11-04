@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -71,6 +71,22 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
       });
     },
   });
+
+  // Auto-refresh tracking data every 30 seconds
+  useEffect(() => {
+    if (!shipment) return;
+
+    // Initial refresh when panel opens
+    refreshTrackingMutation.mutate();
+
+    // Set up interval for auto-refresh every 30 seconds
+    const intervalId = setInterval(() => {
+      refreshTrackingMutation.mutate();
+    }, 30000); // 30 seconds
+
+    // Cleanup interval when component unmounts or shipment changes
+    return () => clearInterval(intervalId);
+  }, [shipment?.trackingNumber]); // Only re-run if tracking number changes
 
   // Now we can safely return early after all hooks have been called
   if (!shipment) return null;
