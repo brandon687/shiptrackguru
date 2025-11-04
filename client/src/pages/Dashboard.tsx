@@ -1,0 +1,255 @@
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { StatsCard } from "@/components/StatsCard";
+import { ShipmentTable, type Shipment } from "@/components/ShipmentTable";
+import { ShipmentDetailPanel } from "@/components/ShipmentDetailPanel";
+import { TrackingComparisonPanel } from "@/components/TrackingComparisonPanel";
+import { StatusDetailPanel } from "@/components/StatusDetailPanel";
+import { SyncStatus } from "@/components/SyncStatus";
+import { Package, Truck, CheckCircle2, AlertCircle } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
+import { transformShipmentsFromAPI } from "@/lib/shipmentUtils";
+
+export default function Dashboard() {
+  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
+  const [showStatusDetail, setShowStatusDetail] = useState<'inTransit' | 'delivered' | 'notScanned' | null>(null);
+  const [lastSynced, setLastSynced] = useState<Date | undefined>(undefined);
+
+  const { data: rawApiShipments, isLoading } = useQuery({
+    queryKey: ["/api/shipments"],
+  });
+
+  const { data: allTrackingNumbers } = useQuery<string[]>({
+    queryKey: ["/api/tracking-numbers/all"],
+  });
+
+  // Transform API data to ensure dates are properly parsed
+  const apiShipments = rawApiShipments ? transformShipmentsFromAPI(rawApiShipments as any[]) : undefined;
+
+  // Use API data
+  const shipments = apiShipments || [];
+
+  // Helper function to count individual tracking numbers for shipments matching a condition
+  const countTrackingNumbers = (condition: (s: Shipment) => boolean) => {
+    return shipments
+      .filter(condition)
+      .reduce((total, shipment) => {
+        // If shipment has child tracking numbers, count all of them
+        if (shipment.childTrackingNumbers && shipment.childTrackingNumbers.length > 0) {
+          return total + shipment.childTrackingNumbers.length;
+        }
+        // Otherwise count the master tracking number (1)
+        return total + 1;
+      }, 0);
+  };
+
+  // Filter functions for status categories
+  const inTransitShipments = shipments.filter((s) => 
+    s.status === "in_transit" || 
+    s.status === "On the way" || 
+    s.status === "out_for_delivery" || 
+    s.status === "Out for delivery" ||
+    s.status === "picked_up" ||
+    s.status === "We have your package"
+  );
+  
+  const deliveredShipments = shipments.filter((s) => 
+    s.status === "delivered" || 
+    s.status === "Delivered"
+  );
+  
+  const notScannedShipments = shipments.filter((s) => 
+    s.notScanned === 1
+  );
+
+  const stats = {
+    total: shipments.length, // Keep showing master shipment count for "Total Shipments"
+    inTransit: countTrackingNumbers((s) => 
+      s.status === "in_transit" || 
+      s.status === "On the way" || 
+      s.status === "out_for_delivery" || 
+      s.status === "Out for delivery" ||
+      s.status === "picked_up" ||
+      s.status === "We have your package"
+    ),
+    deliveredToday: countTrackingNumbers((s) => 
+      s.status === "delivered" || 
+      s.status === "Delivered"
+    ),
+    notScanned: countTrackingNumbers((s) => 
+      s.notScanned === 1
+    ),
+  };
+
+  const handleSync = async () => {
+    console.log("Syncing data from Google Sheets...");
+    
+    try {
+      // Sync from Google Sheets
+      const response = await fetch("/api/sync/google-sheets", {
+        method: "POST",
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`Synced ${result.successful} shipments from Google Sheets`);
+        setLastSynced(new Date());
+      }
+    } catch (error) {
+      console.log("Google Sheets sync not configured or failed");
+    }
+
+    try {
+      // Refresh FedEx tracking data for all shipments
+      console.log("Refreshing FedEx tracking data...");
+      const fedexResponse = await fetch("/api/fedex/refresh-all", {
+        method: "POST",
+      });
+      
+      if (fedexResponse.ok) {
+        const fedexResult = await fedexResponse.json();
+        console.log(`Updated ${fedexResult.successful} shipments with live FedEx data`);
+      }
+    } catch (error) {
+      console.log("FedEx refresh not configured or failed");
+    }
+    
+    // Refresh the shipments list
+    queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
+  };
+
+  // Auto-sync on component mount and every 5 minutes
+  useEffect(() => {
+    // Sync immediately on load
+    handleSync();
+
+    // Set up periodic sync every 5 minutes (300000ms)
+    const syncInterval = setInterval(() => {
+      console.log("Auto-syncing from Google Sheets...");
+      handleSync();
+    }, 5 * 60 * 1000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(syncInterval);
+  }, []); // Empty dependency array means this runs once on mount
+
+  return (
+    <>
+      <div className="flex-1 overflow-auto">
+        <div className="container max-w-7xl mx-auto p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Dashboard</h1>
+              <p className="text-muted-foreground mt-1">
+                Track and manage your FedEx shipments
+              </p>
+            </div>
+            <SyncStatus
+              lastSynced={lastSynced}
+              onSync={handleSync}
+            />
+          </div>
+
+          {!apiShipments || apiShipments.length === 0 ? (
+            <Card className="p-8 text-center">
+              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No shipments yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Data will automatically sync from your Google Sheet every 5 minutes
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Make sure you have GOOGLE_SERVICE_ACCOUNT_JSON and GOOGLE_SHEET_ID configured in your secrets
+              </p>
+              <Button onClick={handleSync} data-testid="button-sync-now">
+                Sync Now
+              </Button>
+            </Card>
+          ) : null}
+
+          {apiShipments && apiShipments.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard
+                  title="Total Shipments"
+                  value={stats.total}
+                  icon={Package}
+                  onClick={() => setShowComparison(true)}
+                />
+                <StatsCard
+                  title="In Transit"
+                  value={stats.inTransit}
+                  icon={Truck}
+                  onClick={() => setShowStatusDetail('inTransit')}
+                />
+                <StatsCard
+                  title="Delivered"
+                  value={stats.deliveredToday}
+                  icon={CheckCircle2}
+                  onClick={() => setShowStatusDetail('delivered')}
+                />
+                <StatsCard
+                  title="Not Scanned"
+                  value={stats.notScanned}
+                  icon={AlertCircle}
+                  onClick={() => setShowStatusDetail('notScanned')}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Shipments</h2>
+                </div>
+                <ShipmentTable
+                  shipments={shipments}
+                  onViewDetails={setSelectedShipment}
+                />
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      {selectedShipment && (
+        <ShipmentDetailPanel
+          shipment={selectedShipment}
+          onClose={() => setSelectedShipment(null)}
+        />
+      )}
+
+      {showComparison && allTrackingNumbers && (
+        <TrackingComparisonPanel
+          allTrackingNumbers={allTrackingNumbers}
+          onClose={() => setShowComparison(false)}
+        />
+      )}
+
+      {showStatusDetail === 'inTransit' && (
+        <StatusDetailPanel
+          title="In Transit Packages"
+          shipments={inTransitShipments}
+          onClose={() => setShowStatusDetail(null)}
+        />
+      )}
+
+      {showStatusDetail === 'delivered' && (
+        <StatusDetailPanel
+          title="Delivered Packages"
+          shipments={deliveredShipments}
+          onClose={() => setShowStatusDetail(null)}
+        />
+      )}
+
+      {showStatusDetail === 'notScanned' && (
+        <StatusDetailPanel
+          title="Not Scanned Packages"
+          shipments={notScannedShipments}
+          onClose={() => setShowStatusDetail(null)}
+        />
+      )}
+    </>
+  );
+}

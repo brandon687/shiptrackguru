@@ -1,0 +1,27 @@
+456516702833	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	2	530	Inbound	FedEx Priority Overnight
+456516702844	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702855	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702866	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702877	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702888	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702899	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702903	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702914	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702925	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702936	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702947	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702958	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702969	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702970	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702980	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516702991	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516703005	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516703016	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516703027	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516703038	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516703049	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+456516703050	On the way	10/29/25	Shipping Department	Hyla Mobile Inc	SCAL MOBILE LLC	SCAL MOBILE LLC	456516702833	23	Your Packaging	24	24	Inbound	FedEx Priority Overnight
+885555325356	We have your package	10/29/25	Shipping Department	Assurant	SCAL MOBILE	SCAL MOBILE	885555325356	4	Your Packaging	33	98	Inbound	FedEx Priority Overnight
+885555325367	We have your package	10/29/25	Shipping Department	Assurant	SCAL MOBILE	SCAL MOBILE	885555325356	4	Your Packaging	33	33	Inbound	FedEx Priority Overnight
+885555325378	We have your package	10/29/25	Shipping Department	Assurant	SCAL MOBILE	SCAL MOBILE	885555325356	4	Your Packaging	21	21	Inbound	FedEx Priority Overnight
+885555325389	We have your package	10/29/25	Shipping Department	Assurant	SCAL MOBILE	SCAL MOBILE	885555325356	4	Your Packaging	11	11	Inbound	FedEx Priority Overnight
