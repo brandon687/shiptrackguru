@@ -503,6 +503,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reset all scan/completion flags (for testing)
+  app.post("/api/shipments/reset-flags", async (req, res) => {
+    try {
+      const shipments = await storage.getAllShipments();
+      for (const shipment of shipments) {
+        await storage.updateShipment(shipment.id, {
+          notScanned: 0,
+          manuallyCompleted: 0,
+        });
+      }
+      res.json({
+        message: "All scan and completion flags reset",
+        count: shipments.length
+      });
+    } catch (error) {
+      console.error("Error resetting flags:", error);
+      res.status(500).json({ error: "Failed to reset flags" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
