@@ -1,1 +1,7 @@
 attached_assets/*.json
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
