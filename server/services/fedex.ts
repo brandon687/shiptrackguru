@@ -20,10 +20,15 @@ export class FedExService {
 
   constructor() {
     this.apiKey = process.env.FEDEX_API_KEY;
-    this.apiSecret = process.env.FEDEX_API_SECRET;
+    this.apiSecret = process.env.FEDEX_SECRET_KEY || process.env.FEDEX_API_SECRET;
 
     if (!this.apiKey || !this.apiSecret) {
-      console.log("FedEx API not configured - FEDEX_API_KEY or FEDEX_API_SECRET not set");
+      console.log("FedEx API not configured - FEDEX_API_KEY or FEDEX_SECRET_KEY not set");
+      console.log(`FEDEX_API_KEY present: ${!!process.env.FEDEX_API_KEY}`);
+      console.log(`FEDEX_SECRET_KEY present: ${!!process.env.FEDEX_SECRET_KEY}`);
+      console.log(`FEDEX_API_SECRET present: ${!!process.env.FEDEX_API_SECRET}`);
+    } else {
+      console.log("FedEx API configured successfully");
     }
   }
 
