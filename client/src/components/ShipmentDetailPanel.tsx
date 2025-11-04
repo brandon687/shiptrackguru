@@ -21,6 +21,8 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
   const [isEditingChildTracking, setIsEditingChildTracking] = useState(false);
   const [childTrackingInput, setChildTrackingInput] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<string | null>(null);
+  const [lastRefreshMessage, setLastRefreshMessage] = useState<string | null>(null);
   const { toast } = useToast();
 
   // All hooks must be called before any conditional returns
@@ -58,6 +60,10 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
+
+      // Update last refresh time and message
+      setLastRefreshTime(new Date().toLocaleTimeString());
+      setLastRefreshMessage(data.message || "Refreshed");
 
       // Show different messages based on response
       if (data.message?.includes("not configured")) {
@@ -208,6 +214,18 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
                 {refreshTrackingMutation.isPending ? 'Refreshing...' : 'Refresh'}
               </Button>
             </div>
+
+            {lastRefreshTime && (
+              <div className="bg-muted/30 rounded p-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Last refresh:</span>
+                  <span className="font-mono">{lastRefreshTime}</span>
+                </div>
+                {lastRefreshMessage && (
+                  <p className="text-muted-foreground mt-1 text-[10px]">{lastRefreshMessage}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <Separator />
