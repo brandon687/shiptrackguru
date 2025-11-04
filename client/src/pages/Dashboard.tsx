@@ -40,10 +40,15 @@ export default function Dashboard() {
     console.log("manuallyCompleted:", shipments[0].manuallyCompleted, "type:", typeof shipments[0].manuallyCompleted);
   }
 
-  // Helper function to count tracking numbers for shipments matching a condition
-  // Always counts 1 per shipment (master tracking number) since that's what you physically scan
+  // Helper function to count individual packages for shipments matching a condition
+  // Uses packageCount from each shipment to count total individual packages
   const countTrackingNumbers = (condition: (s: Shipment) => boolean) => {
-    return shipments.filter(condition).length;
+    return shipments
+      .filter(condition)
+      .reduce((total, shipment) => {
+        // Use packageCount to get the total number of individual packages
+        return total + (shipment.packageCount || 1);
+      }, 0);
   };
 
   // Filter functions for status categories (now based on manual user actions)
