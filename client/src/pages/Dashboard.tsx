@@ -63,6 +63,11 @@ export default function Dashboard() {
     s.notScanned === 1
   );
 
+  // Count not scanned as 1 per shipment (master tracking number missing)
+  const countNotScannedTrackingNumbers = () => {
+    return notScannedShipments.length;
+  };
+
   const stats = {
     total: shipments.length, // Keep showing master shipment count for "Total Shipments"
     inTransit: countTrackingNumbers((s) =>
@@ -71,9 +76,7 @@ export default function Dashboard() {
     deliveredToday: countTrackingNumbers((s) =>
       s.manuallyCompleted === 1
     ),
-    notScanned: countTrackingNumbers((s) =>
-      s.notScanned === 1
-    ),
+    notScanned: countNotScannedTrackingNumbers(),
   };
 
   const handleSync = async () => {
