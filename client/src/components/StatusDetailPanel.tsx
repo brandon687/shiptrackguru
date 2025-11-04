@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { X, ExternalLink, Package } from "lucide-react";
 import type { Shipment } from "./ShipmentTable";
+import { useEffect } from "react";
 
 interface StatusDetailPanelProps {
   title: string;
@@ -12,6 +13,25 @@ interface StatusDetailPanelProps {
 }
 
 export function StatusDetailPanel({ title, shipments, onClose }: StatusDetailPanelProps) {
+  // Automatically archive delivered shipments when viewing Delivered Packages panel
+  useEffect(() => {
+    const archiveDeliveredShipments = async () => {
+      if (title === "Delivered Packages" && shipments.length > 0) {
+        const trackingNumbers = shipments.map(s => s.trackingNumber);
+        try {
+          await fetch("/api/shipments/archive-delivered", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ trackingNumbers }),
+          });
+        } catch (error) {
+          console.error("Failed to archive delivered shipments:", error);
+        }
+      }
+    };
+
+    archiveDeliveredShipments();
+  }, [title, shipments]);
   // Show only master tracking numbers (what you physically scan)
   const trackingItems = shipments.map(shipment => ({
     trackingNumber: shipment.trackingNumber,

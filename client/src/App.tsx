@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import Dashboard from "@/pages/Dashboard";
 import ImportData from "@/pages/ImportData";
+import DeliveredHistory from "@/pages/DeliveredHistory";
 import Analytics from "@/pages/Analytics";
 import ErrorLog from "@/pages/ErrorLog";
 import Settings from "@/pages/Settings";
@@ -21,7 +22,7 @@ function Router() {
       <Route path="/import" component={ImportData} />
       <Route path="/shipments" component={Dashboard} />
       <Route path="/in-transit" component={Dashboard} />
-      <Route path="/delivered" component={Dashboard} />
+      <Route path="/delivered" component={DeliveredHistory} />
       <Route path="/exceptions" component={Dashboard} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/error-log" component={ErrorLog} />
