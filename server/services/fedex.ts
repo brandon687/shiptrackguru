@@ -18,7 +18,7 @@ export class FedExService {
   private apiSecret: string | undefined;
   private baseUrl = "https://apis.fedex.com";
   private lastRequestTime = 0;
-  private minRequestInterval = 2000; // Minimum 2 seconds between requests
+  private minRequestInterval = 5000; // Minimum 5 seconds between requests to avoid rate limits
 
   constructor() {
     this.apiKey = process.env.FEDEX_API_KEY;

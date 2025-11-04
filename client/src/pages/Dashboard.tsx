@@ -80,41 +80,17 @@ export default function Dashboard() {
   };
 
   const handleSync = async () => {
-    console.log("Refreshing FedEx tracking data...");
-
-    try {
-      // Refresh FedEx tracking data for all shipments
-      const fedexResponse = await fetch("/api/fedex/refresh-all", {
-        method: "POST",
-      });
-
-      if (fedexResponse.ok) {
-        const fedexResult = await fedexResponse.json();
-        console.log(`Updated ${fedexResult.successful} shipments with live FedEx data`);
-        setLastSynced(new Date());
-      }
-    } catch (error) {
-      console.log("FedEx refresh failed:", error);
-    }
+    console.log("Manual sync - refreshing shipments list only");
+    // Note: Bulk FedEx refresh is disabled to prevent rate limiting
+    // Use the refresh button in individual shipment detail panels instead
 
     // Refresh the shipments list
     queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
+    setLastSynced(new Date());
   };
 
-  // Auto-refresh FedEx data every 5 minutes
-  useEffect(() => {
-    // Refresh FedEx data immediately on load
-    handleSync();
-
-    // Set up periodic refresh every 5 minutes (300000ms)
-    const syncInterval = setInterval(() => {
-      console.log("Auto-refreshing FedEx tracking data...");
-      handleSync();
-    }, 5 * 60 * 1000);
-
-    // Cleanup interval on unmount
-    return () => clearInterval(syncInterval);
-  }, []); // Empty dependency array means this runs once on mount
+  // Auto-refresh disabled to prevent FedEx API rate limiting
+  // Users should manually refresh individual shipments using the detail panel
 
   return (
     <>

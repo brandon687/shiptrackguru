@@ -313,49 +313,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Refresh all shipments with FedEx data
   app.post("/api/fedex/refresh-all", async (req, res) => {
-    try {
-      if (!fedExService.isConfigured()) {
-        return res.status(400).json({ 
-          error: "FedEx API not configured",
-          message: "Please set FEDEX_API_KEY and FEDEX_API_SECRET in your environment variables"
-        });
-      }
-
-      const shipments = await storage.getAllShipments();
-      const results = [];
-
-      for (const shipment of shipments) {
-        try {
-          const trackingInfo = await fedExService.getTrackingInfo(shipment.trackingNumber);
-          if (trackingInfo) {
-            await storage.updateShipment(shipment.id, {
-              status: trackingInfo.status,
-              fedexRawData: JSON.stringify(trackingInfo),
-            });
-            results.push({ success: true, trackingNumber: shipment.trackingNumber, status: trackingInfo.status });
-          } else {
-            results.push({ success: false, trackingNumber: shipment.trackingNumber, error: "No tracking info found" });
-          }
-        } catch (error) {
-          results.push({ 
-            success: false, 
-            trackingNumber: shipment.trackingNumber,
-            error: error instanceof Error ? error.message : "Unknown error"
-          });
-        }
-      }
-
-      const successCount = results.filter(r => r.success).length;
-      res.json({
-        total: shipments.length,
-        successful: successCount,
-        failed: shipments.length - successCount,
-        results
-      });
-    } catch (error) {
-      console.error("Error refreshing FedEx data:", error);
-      res.status(500).json({ error: "Failed to refresh FedEx data" });
-    }
+    // Disabled due to FedEx API rate limiting
+    // Use individual shipment refresh instead
+    return res.status(400).json({
+      error: "Bulk refresh disabled",
+      message: "Bulk refresh has been disabled to prevent FedEx API rate limiting. Please refresh individual shipments using the refresh button in the shipment detail panel."
+    });
   });
 
   // Delete single shipment by tracking number
