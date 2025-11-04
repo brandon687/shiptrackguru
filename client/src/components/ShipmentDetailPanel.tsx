@@ -97,17 +97,17 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
     },
   });
 
-  // Auto-refresh tracking data every 30 seconds
+  // Auto-refresh tracking data every 2 minutes
   useEffect(() => {
     if (!shipment) return;
 
     // Initial refresh when panel opens
     refreshTrackingMutation.mutate();
 
-    // Set up interval for auto-refresh every 30 seconds
+    // Set up interval for auto-refresh every 2 minutes to avoid rate limits
     const intervalId = setInterval(() => {
       refreshTrackingMutation.mutate();
-    }, 30000); // 30 seconds
+    }, 120000); // 2 minutes
 
     // Cleanup interval when component unmounts or shipment changes
     return () => clearInterval(intervalId);

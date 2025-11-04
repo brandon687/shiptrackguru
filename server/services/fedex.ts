@@ -17,6 +17,8 @@ export class FedExService {
   private apiKey: string | undefined;
   private apiSecret: string | undefined;
   private baseUrl = "https://apis.fedex.com";
+  private lastRequestTime = 0;
+  private minRequestInterval = 2000; // Minimum 2 seconds between requests
 
   constructor() {
     this.apiKey = process.env.FEDEX_API_KEY;
@@ -30,6 +32,18 @@ export class FedExService {
     } else {
       console.log("FedEx API configured successfully");
     }
+  }
+
+  private async rateLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+
+    this.lastRequestTime = Date.now();
   }
 
   async validateTrackingNumber(trackingNumber: string): Promise<boolean> {
@@ -53,13 +67,11 @@ export class FedExService {
     }
 
     try {
-      // Note: This is a simplified example. Actual FedEx API integration requires:
-      // 1. OAuth token acquisition
-      // 2. Proper request formatting according to FedEx API docs
-      // 3. Error handling for rate limits, invalid tracking numbers, etc.
-      
+      // Apply rate limiting before making request
+      await this.rateLimit();
+
       const token = await this.getAccessToken();
-      
+
       const response = await axios.post(
         `${this.baseUrl}/track/v1/trackingnumbers`,
         {
@@ -86,7 +98,7 @@ export class FedExService {
       }
 
       const latestStatus = trackingResult.trackResults?.[0];
-      
+
       // Store the full raw response for extracting child tracking numbers later
       const result = {
         trackingNumber,
@@ -105,8 +117,13 @@ export class FedExService {
       (result as any).rawApiResponse = response.data;
 
       return result;
-    } catch (error) {
-      console.error("Error fetching FedEx tracking info:", error);
+    } catch (error: any) {
+      // Handle rate limiting errors specifically
+      if (error.response?.status === 429) {
+        console.warn(`Rate limit hit for tracking ${trackingNumber} - will retry later`);
+        return null;
+      }
+      console.error("Error fetching FedEx tracking info:", error.message || error);
       return null;
     }
   }
