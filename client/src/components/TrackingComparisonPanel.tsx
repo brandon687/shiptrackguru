@@ -1,4 +1,4 @@
-import { X, AlertCircle, CheckCircle2, Copy, Save, History, Trash2 } from "lucide-react";
+import { X, AlertCircle, CheckCircle2, Copy, Save, History, Trash2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -230,6 +230,43 @@ export function TrackingComparisonPanel({ allTrackingNumbers, onClose }: Trackin
     }
   }, [foundInInput.join(',')]); // Use join to create stable dependency
 
+  // Mutation to mark tracking numbers as completed
+  const markCompletedMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/shipments/mark-completed", {
+        trackingNumbers: foundInInput,
+      });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
+      toast({
+        title: "Marked as Complete",
+        description: `${data.count} shipment(s) marked as delivered/complete.`,
+      });
+      onClose();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark shipments as complete",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleMarkComplete = () => {
+    if (foundInInput.length === 0) {
+      toast({
+        title: "Error",
+        description: "No tracking numbers to mark as complete",
+        variant: "destructive",
+      });
+      return;
+    }
+    markCompletedMutation.mutate();
+  };
+
   const handleReportMissing = () => {
     if (missingInInput.length === 0) {
       toast({
@@ -395,17 +432,30 @@ export function TrackingComparisonPanel({ allTrackingNumbers, onClose }: Trackin
                       className="flex-1"
                       data-testid="input-session-name"
                     />
-                    <Button 
+                    <Button
                       onClick={handleSaveSession}
                       disabled={saveSessionMutation.isPending}
                       size="sm"
+                      variant="outline"
                       data-testid="button-save-session"
                     >
                       <Save className="h-4 w-4 mr-1" />
-                      {saveSessionMutation.isPending ? "Saving..." : "Save"}
+                      {saveSessionMutation.isPending ? "Saving..." : "Save Session"}
                     </Button>
+                    {foundInInput.length > 0 && missingInInput.length === 0 && (
+                      <Button
+                        onClick={handleMarkComplete}
+                        disabled={markCompletedMutation.isPending}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700"
+                        data-testid="button-mark-complete"
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        {markCompletedMutation.isPending ? "Completing..." : "Mark Complete"}
+                      </Button>
+                    )}
                     {missingInInput.length > 0 && (
-                      <Button 
+                      <Button
                         onClick={handleReportMissing}
                         disabled={reportMissingMutation.isPending}
                         size="sm"

@@ -47,40 +47,28 @@ export default function Dashboard() {
       }, 0);
   };
 
-  // Filter functions for status categories
-  const inTransitShipments = shipments.filter((s) => 
-    s.status === "in_transit" || 
-    s.status === "On the way" || 
-    s.status === "out_for_delivery" || 
-    s.status === "Out for delivery" ||
-    s.status === "picked_up" ||
-    s.status === "We have your package"
+  // Filter functions for status categories (now based on manual user actions)
+  const inTransitShipments = shipments.filter((s) =>
+    s.notScanned === 0 && s.manuallyCompleted === 0
   );
-  
-  const deliveredShipments = shipments.filter((s) => 
-    s.status === "delivered" || 
-    s.status === "Delivered"
+
+  const deliveredShipments = shipments.filter((s) =>
+    s.manuallyCompleted === 1
   );
-  
-  const notScannedShipments = shipments.filter((s) => 
+
+  const notScannedShipments = shipments.filter((s) =>
     s.notScanned === 1
   );
 
   const stats = {
     total: shipments.length, // Keep showing master shipment count for "Total Shipments"
-    inTransit: countTrackingNumbers((s) => 
-      s.status === "in_transit" || 
-      s.status === "On the way" || 
-      s.status === "out_for_delivery" || 
-      s.status === "Out for delivery" ||
-      s.status === "picked_up" ||
-      s.status === "We have your package"
+    inTransit: countTrackingNumbers((s) =>
+      s.notScanned === 0 && s.manuallyCompleted === 0
     ),
-    deliveredToday: countTrackingNumbers((s) => 
-      s.status === "delivered" || 
-      s.status === "Delivered"
+    deliveredToday: countTrackingNumbers((s) =>
+      s.manuallyCompleted === 1
     ),
-    notScanned: countTrackingNumbers((s) => 
+    notScanned: countTrackingNumbers((s) =>
       s.notScanned === 1
     ),
   };

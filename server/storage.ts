@@ -122,6 +122,14 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async markShipmentsAsCompleted(trackingNumbers: string[]): Promise<void> {
+    for (const trackingNumber of trackingNumbers) {
+      await db.update(shipments)
+        .set({ manuallyCompleted: 1, notScanned: 0 })
+        .where(eq(shipments.trackingNumber, trackingNumber));
+    }
+  }
+
   async getAllSyncLogs(limit: number = 100): Promise<SyncLog[]> {
     return await db.select().from(syncLogs).orderBy(desc(syncLogs.timestamp)).limit(limit);
   }

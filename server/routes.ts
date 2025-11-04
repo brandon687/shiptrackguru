@@ -476,19 +476,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/shipments/mark-scanned", async (req, res) => {
     try {
       const { trackingNumbers } = req.body;
-      
+
       if (!Array.isArray(trackingNumbers) || trackingNumbers.length === 0) {
         return res.status(400).json({ error: "trackingNumbers must be a non-empty array" });
       }
 
       await storage.markShipmentsAsScanned(trackingNumbers);
-      res.json({ 
-        message: "Shipments marked as scanned", 
-        count: trackingNumbers.length 
+      res.json({
+        message: "Shipments marked as scanned",
+        count: trackingNumbers.length
       });
     } catch (error) {
       console.error("Error marking shipments as scanned:", error);
       res.status(500).json({ error: "Failed to mark shipments as scanned" });
+    }
+  });
+
+  // Mark shipments as completed
+  app.post("/api/shipments/mark-completed", async (req, res) => {
+    try {
+      const { trackingNumbers } = req.body;
+
+      if (!Array.isArray(trackingNumbers) || trackingNumbers.length === 0) {
+        return res.status(400).json({ error: "trackingNumbers must be a non-empty array" });
+      }
+
+      await storage.markShipmentsAsCompleted(trackingNumbers);
+      res.json({
+        message: "Shipments marked as completed",
+        count: trackingNumbers.length
+      });
+    } catch (error) {
+      console.error("Error marking shipments as completed:", error);
+      res.status(500).json({ error: "Failed to mark shipments as completed" });
     }
   });
 
