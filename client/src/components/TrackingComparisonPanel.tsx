@@ -442,7 +442,7 @@ export function TrackingComparisonPanel({ allTrackingNumbers, onClose }: Trackin
                       <Save className="h-4 w-4 mr-1" />
                       {saveSessionMutation.isPending ? "Saving..." : "Save Session"}
                     </Button>
-                    {foundInInput.length > 0 && missingInInput.length === 0 && (
+                    {foundInInput.length > 0 && (
                       <Button
                         onClick={handleMarkComplete}
                         disabled={markCompletedMutation.isPending}
