@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -103,15 +103,17 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
     refreshTrackingMutation.mutate();
   };
 
-  // Parse FedEx raw data if available
-  let fedexData = null;
-  try {
-    if (shipment.fedexRawData) {
-      fedexData = JSON.parse(shipment.fedexRawData);
+  // Parse FedEx raw data if available - use useMemo to recalculate when shipment changes
+  const fedexData = useMemo(() => {
+    try {
+      if (shipment.fedexRawData) {
+        return JSON.parse(shipment.fedexRawData);
+      }
+    } catch (error) {
+      console.error("Error parsing FedEx data:", error);
     }
-  } catch (error) {
-    console.error("Error parsing FedEx data:", error);
-  }
+    return null;
+  }, [shipment.fedexRawData]);
 
   return (
     <div className="fixed inset-y-0 right-0 w-96 bg-background border-l shadow-lg z-50 flex flex-col">
