@@ -615,6 +615,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`Successfully retrieved FedEx data for: ${trackingNumber}`);
+      console.log(`FedEx Status: ${fedexData.status}`);
+      console.log(`FedEx Estimated Delivery: ${fedexData.estimatedDelivery}`);
+      console.log(`FedEx Events Count: ${fedexData.events?.length || 0}`);
 
       // Update shipment with latest FedEx data
       await storage.updateShipment(shipment.id, {
@@ -622,6 +625,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scheduledDelivery: fedexData.estimatedDelivery || shipment.scheduledDelivery,
         fedexRawData: JSON.stringify(fedexData),
       });
+
+      console.log(`Updated shipment ${trackingNumber} with status: ${fedexData.status}`);
 
       // Get updated shipment
       const updatedShipment = await storage.getShipmentByTracking(trackingNumber);
