@@ -579,6 +579,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Refresh single shipment tracking data from FedEx
+  app.post("/api/shipments/:trackingNumber/refresh", async (req, res) => {
+    try {
+      const { trackingNumber } = req.params;
+      const shipment = await storage.getShipmentByTracking(trackingNumber);
+
+      if (!shipment) {
+        return res.status(404).json({ error: "Shipment not found" });
+      }
+
+      // Get live tracking data from FedEx
+      const fedexData = await fedExService.getTrackingInfo(trackingNumber);
+
+      if (!fedexData) {
+        return res.status(404).json({ error: "Tracking information not found" });
+      }
+
+      // Update shipment with latest FedEx data
+      await storage.updateShipment(shipment.id, {
+        status: fedexData.status || shipment.status,
+        scheduledDelivery: fedexData.estimatedDelivery || shipment.scheduledDelivery,
+        fedexRawData: JSON.stringify(fedexData),
+      });
+
+      // Get updated shipment
+      const updatedShipment = await storage.getShipmentByTracking(trackingNumber);
+
+      res.json({
+        message: "Tracking information refreshed",
+        shipment: updatedShipment,
+        fedexData
+      });
+    } catch (error) {
+      console.error("Error refreshing shipment:", error);
+      res.status(500).json({ error: "Failed to refresh tracking information" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

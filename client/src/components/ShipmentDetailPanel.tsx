@@ -20,6 +20,7 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
   const [showFedExData, setShowFedExData] = useState(false);
   const [isEditingChildTracking, setIsEditingChildTracking] = useState(false);
   const [childTrackingInput, setChildTrackingInput] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
   // All hooks must be called before any conditional returns
@@ -50,6 +51,27 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
     },
   });
 
+  const refreshTrackingMutation = useMutation({
+    mutationFn: async () => {
+      if (!shipment) throw new Error("No shipment selected");
+      return await apiRequest("POST", `/api/shipments/${shipment.trackingNumber}/refresh`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
+      toast({
+        title: "Tracking Refreshed",
+        description: "Live tracking information updated from FedEx",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to refresh tracking information",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Now we can safely return early after all hooks have been called
   if (!shipment) return null;
 
@@ -71,10 +93,14 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shipment.trackingNumber);
+    toast({
+      title: "Copied",
+      description: "Tracking number copied to clipboard",
+    });
   };
 
   const handleRefresh = () => {
-    console.log("Refreshing tracking information");
+    refreshTrackingMutation.mutate();
   };
 
   // Parse FedEx raw data if available
@@ -139,9 +165,10 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
                 onClick={handleRefresh}
                 className="flex-1 gap-2"
                 data-testid="button-refresh-tracking"
+                disabled={refreshTrackingMutation.isPending}
               >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
+                <RefreshCw className={`h-4 w-4 ${refreshTrackingMutation.isPending ? 'animate-spin' : ''}`} />
+                {refreshTrackingMutation.isPending ? 'Refreshing...' : 'Refresh'}
               </Button>
             </div>
           </div>
