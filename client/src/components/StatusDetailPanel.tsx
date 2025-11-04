@@ -12,36 +12,17 @@ interface StatusDetailPanelProps {
 }
 
 export function StatusDetailPanel({ title, shipments, onClose }: StatusDetailPanelProps) {
-  // Expand shipments into individual tracking numbers
-  const trackingItems = shipments.flatMap(shipment => {
-    const childNumbers = shipment.childTrackingNumbers || [];
-    
-    if (childNumbers.length > 0) {
-      // Multi-package shipment - create an entry for each child tracking number
-      return childNumbers.map(trackingNumber => ({
-        trackingNumber,
-        masterTrackingNumber: shipment.trackingNumber,
-        shipperCompany: shipment.shipperCompany,
-        recipientCompany: shipment.recipientCompany,
-        serviceType: shipment.serviceType,
-        status: shipment.status,
-        scheduledDelivery: shipment.scheduledDelivery,
-        packageCount: shipment.packageCount,
-      }));
-    } else {
-      // Single-package shipment
-      return [{
-        trackingNumber: shipment.trackingNumber,
-        masterTrackingNumber: shipment.trackingNumber,
-        shipperCompany: shipment.shipperCompany,
-        recipientCompany: shipment.recipientCompany,
-        serviceType: shipment.serviceType,
-        status: shipment.status,
-        scheduledDelivery: shipment.scheduledDelivery,
-        packageCount: shipment.packageCount,
-      }];
-    }
-  });
+  // Show only master tracking numbers (what you physically scan)
+  const trackingItems = shipments.map(shipment => ({
+    trackingNumber: shipment.trackingNumber,
+    masterTrackingNumber: shipment.trackingNumber,
+    shipperCompany: shipment.shipperCompany,
+    recipientCompany: shipment.recipientCompany,
+    serviceType: shipment.serviceType,
+    status: shipment.status,
+    scheduledDelivery: shipment.scheduledDelivery,
+    packageCount: shipment.packageCount,
+  }));
 
   const handleOpenTracking = (trackingNumber: string) => {
     window.open(`https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`, '_blank');
@@ -54,7 +35,7 @@ export function StatusDetailPanel({ title, shipments, onClose }: StatusDetailPan
           <div>
             <h2 className="text-lg font-semibold">{title}</h2>
             <p className="text-sm text-muted-foreground">
-              {trackingItems.length} individual tracking number{trackingItems.length !== 1 ? 's' : ''}
+              {trackingItems.length} master tracking number{trackingItems.length !== 1 ? 's' : ''}
             </p>
           </div>
           <Button
