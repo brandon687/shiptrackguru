@@ -589,12 +589,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Shipment not found" });
       }
 
+      console.log(`Refreshing tracking data for: ${trackingNumber}`);
+
+      // Check if FedEx service is configured
+      if (!fedExService.isConfigured()) {
+        console.warn("FedEx API not configured - skipping live refresh");
+        return res.json({
+          message: "FedEx API not configured - using cached data",
+          shipment: shipment,
+          fedexData: shipment.fedexRawData ? JSON.parse(shipment.fedexRawData) : null
+        });
+      }
+
       // Get live tracking data from FedEx
       const fedexData = await fedExService.getTrackingInfo(trackingNumber);
 
       if (!fedexData) {
-        return res.status(404).json({ error: "Tracking information not found" });
+        console.warn(`No tracking data returned from FedEx for: ${trackingNumber}`);
+        // Return existing data instead of error
+        return res.json({
+          message: "No new tracking data available",
+          shipment: shipment,
+          fedexData: shipment.fedexRawData ? JSON.parse(shipment.fedexRawData) : null
+        });
       }
+
+      console.log(`Successfully retrieved FedEx data for: ${trackingNumber}`);
 
       // Update shipment with latest FedEx data
       await storage.updateShipment(shipment.id, {
@@ -607,13 +627,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedShipment = await storage.getShipmentByTracking(trackingNumber);
 
       res.json({
-        message: "Tracking information refreshed",
+        message: "Tracking information refreshed from FedEx",
         shipment: updatedShipment,
         fedexData
       });
     } catch (error) {
       console.error("Error refreshing shipment:", error);
-      res.status(500).json({ error: "Failed to refresh tracking information" });
+      // Return graceful error with existing data
+      const shipment = await storage.getShipmentByTracking(req.params.trackingNumber);
+      res.json({
+        message: "Failed to refresh - using cached data",
+        shipment: shipment,
+        fedexData: shipment?.fedexRawData ? JSON.parse(shipment.fedexRawData) : null,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

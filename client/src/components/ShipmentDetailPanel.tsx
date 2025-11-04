@@ -56,17 +56,36 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
       if (!shipment) throw new Error("No shipment selected");
       return await apiRequest("POST", `/api/shipments/${shipment.trackingNumber}/refresh`);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
-      toast({
-        title: "Tracking Refreshed",
-        description: "Live tracking information updated from FedEx",
-      });
+
+      // Show different messages based on response
+      if (data.message?.includes("not configured")) {
+        toast({
+          title: "Using Cached Data",
+          description: "FedEx API not configured - showing existing shipment data",
+        });
+      } else if (data.message?.includes("No new tracking data")) {
+        toast({
+          title: "No Updates Available",
+          description: "FedEx returned no tracking data for this shipment",
+        });
+      } else if (data.message?.includes("cached data")) {
+        toast({
+          title: "Using Cached Data",
+          description: data.error || "Could not reach FedEx API",
+        });
+      } else {
+        toast({
+          title: "Tracking Refreshed",
+          description: "Live tracking information updated from FedEx",
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to refresh tracking information",
+        title: "Refresh Failed",
+        description: error.message || "Could not refresh tracking information",
         variant: "destructive",
       });
     },
