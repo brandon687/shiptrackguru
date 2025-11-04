@@ -46,6 +46,7 @@ export interface Shipment {
   fedexRawData: string | null;
   childTrackingNumbers: string[] | null;
   notScanned: number;
+  manuallyCompleted: number;
 }
 
 interface ShipmentTableProps {
