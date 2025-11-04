@@ -528,6 +528,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all delivered shipments history
+  app.get("/api/delivered-shipments", async (req, res) => {
+    try {
+      const deliveredShipments = await storage.getAllDeliveredShipments();
+      res.json(deliveredShipments);
+    } catch (error) {
+      console.error("Error getting delivered shipments:", error);
+      res.status(500).json({ error: "Failed to get delivered shipments" });
+    }
+  });
+
+  // Archive completed shipments to delivered history
+  app.post("/api/shipments/archive-delivered", async (req, res) => {
+    try {
+      const { trackingNumbers } = req.body;
+
+      if (!Array.isArray(trackingNumbers) || trackingNumbers.length === 0) {
+        return res.status(400).json({ error: "trackingNumbers must be a non-empty array" });
+      }
+
+      const archived = [];
+      for (const trackingNumber of trackingNumbers) {
+        const shipment = await storage.getShipmentByTracking(trackingNumber);
+        if (shipment && shipment.manuallyCompleted === 1) {
+          // Create delivered shipment record
+          await storage.createDeliveredShipment({
+            trackingNumber: shipment.trackingNumber,
+            status: shipment.status,
+            shipperCompany: shipment.shipperCompany || null,
+            recipientCompany: shipment.recipientCompany || null,
+            serviceType: shipment.serviceType || null,
+            packageWeight: shipment.packageWeight || null,
+            packageCount: shipment.packageCount,
+            expectedDelivery: shipment.scheduledDelivery || null,
+            actualDelivery: new Date(),
+          });
+          archived.push(trackingNumber);
+        }
+      }
+
+      res.json({
+        message: "Shipments archived to delivered history",
+        count: archived.length,
+        archived
+      });
+    } catch (error) {
+      console.error("Error archiving delivered shipments:", error);
+      res.status(500).json({ error: "Failed to archive delivered shipments" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

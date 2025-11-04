@@ -93,3 +93,27 @@ export const insertScannedSessionSchema = createInsertSchema(scannedSessions).om
 
 export type InsertScannedSession = z.infer<typeof insertScannedSessionSchema>;
 export type ScannedSession = typeof scannedSessions.$inferSelect;
+
+export const deliveredShipments = pgTable("delivered_shipments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trackingNumber: text("tracking_number").notNull(),
+  status: text("status").notNull(),
+  shipperCompany: text("shipper_company"),
+  recipientCompany: text("recipient_company"),
+  serviceType: text("service_type"),
+  packageWeight: text("package_weight"),
+  packageCount: integer("package_count").notNull(),
+  expectedDelivery: text("expected_delivery"),
+  actualDelivery: timestamp("actual_delivery").notNull().defaultNow(),
+  deliveredAt: timestamp("delivered_at").notNull().defaultNow(),
+}, (table) => ({
+  trackingNumberIdx: uniqueIndex("delivered_tracking_number_idx").on(table.trackingNumber),
+}));
+
+export const insertDeliveredShipmentSchema = createInsertSchema(deliveredShipments).omit({
+  id: true,
+  deliveredAt: true,
+});
+
+export type InsertDeliveredShipment = z.infer<typeof insertDeliveredShipmentSchema>;
+export type DeliveredShipment = typeof deliveredShipments.$inferSelect;

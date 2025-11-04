@@ -1,4 +1,4 @@
-import { type Shipment, type InsertShipment, shipments, type SyncLog, type InsertSyncLog, syncLogs, type ScannedSession, type InsertScannedSession, scannedSessions } from "@shared/schema";
+import { type Shipment, type InsertShipment, shipments, type SyncLog, type InsertSyncLog, syncLogs, type ScannedSession, type InsertScannedSession, scannedSessions, type DeliveredShipment, type InsertDeliveredShipment, deliveredShipments } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
@@ -14,16 +14,21 @@ export interface IStorage {
   deleteAllShipments(): Promise<void>;
   markShipmentsAsNotScanned(trackingNumbers: string[]): Promise<void>;
   markShipmentsAsScanned(trackingNumbers: string[]): Promise<void>;
-  
+
   // Sync log operations
   getAllSyncLogs(limit?: number): Promise<SyncLog[]>;
   createSyncLog(log: InsertSyncLog): Promise<SyncLog>;
   getSyncLogsByTracking(trackingNumber: string): Promise<SyncLog[]>;
-  
+
   // Scanned session operations
   getAllScannedSessions(): Promise<ScannedSession[]>;
   createScannedSession(session: InsertScannedSession): Promise<ScannedSession>;
   deleteScannedSession(id: string): Promise<boolean>;
+
+  // Delivered shipments operations
+  getAllDeliveredShipments(): Promise<DeliveredShipment[]>;
+  createDeliveredShipment(shipment: InsertDeliveredShipment): Promise<DeliveredShipment>;
+  getDeliveredShipmentByTracking(trackingNumber: string): Promise<DeliveredShipment | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -165,6 +170,27 @@ export class DatabaseStorage implements IStorage {
   async deleteScannedSession(id: string): Promise<boolean> {
     const result = await db.delete(scannedSessions).where(eq(scannedSessions.id, id));
     return true;
+  }
+
+  async getAllDeliveredShipments(): Promise<DeliveredShipment[]> {
+    return await db.select().from(deliveredShipments).orderBy(desc(deliveredShipments.deliveredAt));
+  }
+
+  async createDeliveredShipment(insertShipment: InsertDeliveredShipment): Promise<DeliveredShipment> {
+    const [shipment] = await db
+      .insert(deliveredShipments)
+      .values(insertShipment)
+      .returning();
+    return shipment;
+  }
+
+  async getDeliveredShipmentByTracking(trackingNumber: string): Promise<DeliveredShipment | undefined> {
+    const result = await db
+      .select()
+      .from(deliveredShipments)
+      .where(eq(deliveredShipments.trackingNumber, trackingNumber))
+      .limit(1);
+    return result[0];
   }
 }
 
