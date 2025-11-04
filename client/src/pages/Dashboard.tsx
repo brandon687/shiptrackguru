@@ -33,6 +33,13 @@ export default function Dashboard() {
   // Use API data
   const shipments = apiShipments || [];
 
+  // Debug logging
+  if (shipments.length > 0) {
+    console.log("First shipment data:", shipments[0]);
+    console.log("notScanned:", shipments[0].notScanned, "type:", typeof shipments[0].notScanned);
+    console.log("manuallyCompleted:", shipments[0].manuallyCompleted, "type:", typeof shipments[0].manuallyCompleted);
+  }
+
   // Helper function to count individual tracking numbers for shipments matching a condition
   const countTrackingNumbers = (condition: (s: Shipment) => boolean) => {
     return shipments
