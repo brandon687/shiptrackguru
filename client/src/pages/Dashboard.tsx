@@ -86,50 +86,35 @@ export default function Dashboard() {
   };
 
   const handleSync = async () => {
-    console.log("Syncing data from Google Sheets...");
-    
-    try {
-      // Sync from Google Sheets
-      const response = await fetch("/api/sync/google-sheets", {
-        method: "POST",
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log(`Synced ${result.successful} shipments from Google Sheets`);
-        setLastSynced(new Date());
-      }
-    } catch (error) {
-      console.log("Google Sheets sync not configured or failed");
-    }
+    console.log("Refreshing FedEx tracking data...");
 
     try {
       // Refresh FedEx tracking data for all shipments
-      console.log("Refreshing FedEx tracking data...");
       const fedexResponse = await fetch("/api/fedex/refresh-all", {
         method: "POST",
       });
-      
+
       if (fedexResponse.ok) {
         const fedexResult = await fedexResponse.json();
         console.log(`Updated ${fedexResult.successful} shipments with live FedEx data`);
+        setLastSynced(new Date());
       }
     } catch (error) {
-      console.log("FedEx refresh not configured or failed");
+      console.log("FedEx refresh failed:", error);
     }
-    
+
     // Refresh the shipments list
     queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
   };
 
-  // Auto-sync on component mount and every 5 minutes
+  // Auto-refresh FedEx data every 5 minutes
   useEffect(() => {
-    // Sync immediately on load
+    // Refresh FedEx data immediately on load
     handleSync();
 
-    // Set up periodic sync every 5 minutes (300000ms)
+    // Set up periodic refresh every 5 minutes (300000ms)
     const syncInterval = setInterval(() => {
-      console.log("Auto-syncing from Google Sheets...");
+      console.log("Auto-refreshing FedEx tracking data...");
       handleSync();
     }, 5 * 60 * 1000);
 

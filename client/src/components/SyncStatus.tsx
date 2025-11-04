@@ -98,7 +98,7 @@ export function SyncStatus({ lastSynced, onSync }: SyncStatusProps) {
         className="gap-2"
       >
         <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-        {isSyncing ? "Syncing..." : "Sync Now"}
+        {isSyncing ? "Refreshing..." : "Refresh Tracking"}
       </Button>
       
       <AlertDialog>
