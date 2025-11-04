@@ -1,6 +1,8 @@
-# FedEx Shipping Dashboard
+# FedEx Shipping Dashboard (ShipTrackGuru)
 
 A comprehensive dashboard for tracking and managing FedEx shipments with Google Sheets integration and real-time FedEx API updates.
+
+**Development Environment:** Claude Code + GitHub + Replit workflow enabled
 
 ### Overview
 This application provides a visual dashboard to track and manage FedEx shipments, emphasizing easy package count verification. It integrates with Google Sheets for data import and the FedEx API for real-time tracking updates. The primary goal is to offer a robust, real-time solution for logistics management, enhancing operational efficiency and providing clear visibility into the shipping process for businesses.
