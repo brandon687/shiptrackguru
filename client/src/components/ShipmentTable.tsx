@@ -47,6 +47,7 @@ export interface Shipment {
   childTrackingNumbers: string[] | null;
   notScanned: number;
   manuallyCompleted: number;
+  deliveredPackageCount: number;
 }
 
 interface ShipmentTableProps {

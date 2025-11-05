@@ -39,6 +39,7 @@ export const shipments = pgTable("shipments", {
   childTrackingNumbers: text("child_tracking_numbers").array(),
   notScanned: integer("not_scanned").notNull().default(0), // 0 = scanned, 1 = not scanned
   manuallyCompleted: integer("manually_completed").notNull().default(0), // 0 = not complete, 1 = complete
+  deliveredPackageCount: integer("delivered_package_count").notNull().default(0), // number of packages actually delivered (for partial deliveries)
 }, (table) => ({
   trackingNumberIdx: uniqueIndex("tracking_number_idx").on(table.trackingNumber),
 }));

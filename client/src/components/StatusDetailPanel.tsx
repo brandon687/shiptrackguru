@@ -2,9 +2,12 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { X, ExternalLink, Package } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { X, ExternalLink, Package, Archive } from "lucide-react";
 import type { Shipment } from "./ShipmentTable";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 interface StatusDetailPanelProps {
   title: string;
@@ -13,25 +16,51 @@ interface StatusDetailPanelProps {
 }
 
 export function StatusDetailPanel({ title, shipments, onClose }: StatusDetailPanelProps) {
-  // Automatically archive delivered shipments when viewing Delivered Packages panel
-  useEffect(() => {
-    const archiveDeliveredShipments = async () => {
-      if (title === "Delivered Packages" && shipments.length > 0) {
-        const trackingNumbers = shipments.map(s => s.trackingNumber);
-        try {
-          await fetch("/api/shipments/archive-delivered", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ trackingNumbers }),
-          });
-        } catch (error) {
-          console.error("Failed to archive delivered shipments:", error);
-        }
-      }
-    };
+  const [isArchiving, setIsArchiving] = useState(false);
+  const { toast } = useToast();
 
-    archiveDeliveredShipments();
-  }, [title, shipments]);
+  const handleArchive = async () => {
+    if (title !== "Delivered Packages" || shipments.length === 0) return;
+
+    setIsArchiving(true);
+    const trackingNumbers = shipments.map(s => s.trackingNumber);
+
+    try {
+      const response = await fetch("/api/shipments/archive-delivered", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackingNumbers }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to archive shipments");
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: "Archived Successfully",
+        description: `${data.count} shipment(s) moved to delivered history`,
+      });
+
+      // Refresh the shipments list
+      queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
+
+      // Close the panel after a brief delay
+      setTimeout(() => {
+        onClose();
+      }, 500);
+    } catch (error) {
+      console.error("Failed to archive delivered shipments:", error);
+      toast({
+        title: "Archive Failed",
+        description: "Could not archive shipments. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsArchiving(false);
+    }
+  };
   // Show only master tracking numbers (what you physically scan)
   const trackingItems = shipments.map(shipment => ({
     trackingNumber: shipment.trackingNumber,
@@ -42,6 +71,7 @@ export function StatusDetailPanel({ title, shipments, onClose }: StatusDetailPan
     status: shipment.status,
     scheduledDelivery: shipment.scheduledDelivery,
     packageCount: shipment.packageCount,
+    deliveredPackageCount: shipment.deliveredPackageCount || 0,
   }));
 
   const handleOpenTracking = (trackingNumber: string) => {
@@ -58,14 +88,28 @@ export function StatusDetailPanel({ title, shipments, onClose }: StatusDetailPan
               {trackingItems.length} master tracking number{trackingItems.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            data-testid="button-close-status-detail"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {title === "Delivered Packages" && shipments.length > 0 && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleArchive}
+                disabled={isArchiving}
+                data-testid="button-archive-delivered"
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                {isArchiving ? "Archiving..." : "Archive All"}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              data-testid="button-close-status-detail"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <ScrollArea className="flex-1">
@@ -126,7 +170,13 @@ export function StatusDetailPanel({ title, shipments, onClose }: StatusDetailPan
                     {item.packageCount > 1 && item.trackingNumber === item.masterTrackingNumber && (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Package className="h-3 w-3" />
-                        <span>Master tracking for {item.packageCount} packages</span>
+                        {item.deliveredPackageCount > 0 && item.deliveredPackageCount < item.packageCount ? (
+                          <span>
+                            Master tracking - {item.deliveredPackageCount}/{item.packageCount} packages delivered
+                          </span>
+                        ) : (
+                          <span>Master tracking for {item.packageCount} packages</span>
+                        )}
                       </div>
                     )}
                   </div>

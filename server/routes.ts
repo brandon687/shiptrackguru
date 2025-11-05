@@ -70,6 +70,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update delivered package count for a shipment (for partial deliveries)
+  app.patch("/api/shipments/:trackingNumber/delivered-count", async (req, res) => {
+    try {
+      const { trackingNumber } = req.params;
+      const { deliveredPackageCount } = req.body;
+
+      if (typeof deliveredPackageCount !== "number" || deliveredPackageCount < 0) {
+        return res.status(400).json({ error: "deliveredPackageCount must be a non-negative number" });
+      }
+
+      const shipment = await storage.getShipmentByTracking(trackingNumber);
+      if (!shipment) {
+        return res.status(404).json({ error: "Shipment not found" });
+      }
+
+      if (deliveredPackageCount > shipment.packageCount) {
+        return res.status(400).json({
+          error: `deliveredPackageCount (${deliveredPackageCount}) cannot exceed total packageCount (${shipment.packageCount})`
+        });
+      }
+
+      await storage.updateShipment(shipment.id, { deliveredPackageCount });
+      const updatedShipment = await storage.getShipmentByTracking(trackingNumber);
+      res.json(updatedShipment);
+    } catch (error) {
+      console.error("Error updating delivered package count:", error);
+      res.status(500).json({ error: "Failed to update delivered package count" });
+    }
+  });
+
   // Get single shipment by tracking number
   app.get("/api/shipments/:trackingNumber", async (req, res) => {
     try {

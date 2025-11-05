@@ -68,14 +68,26 @@ export default function Dashboard() {
     return notScannedShipments.length;
   };
 
+  // Count delivered packages more accurately - use deliveredPackageCount if available
+  const countDeliveredPackages = () => {
+    return shipments.reduce((total, shipment) => {
+      // If deliveredPackageCount is set and greater than 0, use it
+      // Otherwise fall back to old logic (all packages delivered if manuallyCompleted === 1)
+      if (shipment.deliveredPackageCount && shipment.deliveredPackageCount > 0) {
+        return total + shipment.deliveredPackageCount;
+      } else if (shipment.manuallyCompleted === 1) {
+        return total + (shipment.packageCount || 1);
+      }
+      return total;
+    }, 0);
+  };
+
   const stats = {
     total: shipments.length, // Keep showing master shipment count for "Total Shipments"
     inTransit: countTrackingNumbers((s) =>
       s.notScanned === 0 && s.manuallyCompleted === 0
     ),
-    deliveredToday: countTrackingNumbers((s) =>
-      s.manuallyCompleted === 1
-    ),
+    deliveredToday: countDeliveredPackages(),
     notScanned: countNotScannedTrackingNumbers(),
   };
 

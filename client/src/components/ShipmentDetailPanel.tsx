@@ -23,6 +23,8 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<string | null>(null);
   const [lastRefreshMessage, setLastRefreshMessage] = useState<string | null>(null);
+  const [isEditingDeliveredCount, setIsEditingDeliveredCount] = useState(false);
+  const [deliveredCountInput, setDeliveredCountInput] = useState("");
   const { toast } = useToast();
 
   // All hooks must be called before any conditional returns
@@ -48,6 +50,32 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
       toast({
         title: "Error",
         description: error.message || "Failed to update child tracking numbers",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateDeliveredCountMutation = useMutation({
+    mutationFn: async (deliveredPackageCount: number) => {
+      if (!shipment) throw new Error("No shipment selected");
+      return await apiRequest(
+        "PATCH",
+        `/api/shipments/${shipment.trackingNumber}/delivered-count`,
+        { deliveredPackageCount }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
+      setIsEditingDeliveredCount(false);
+      toast({
+        title: "Updated",
+        description: "Delivered package count updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update delivered package count",
         variant: "destructive",
       });
     },
@@ -275,6 +303,97 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
               </Badge>
             </div>
           </div>
+
+          {shipment.packageCount > 1 && shipment.manuallyCompleted === 1 && (
+            <>
+              <Separator />
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Delivered Package Count
+                  </p>
+                  {!isEditingDeliveredCount && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setDeliveredCountInput(String(shipment.deliveredPackageCount || shipment.packageCount));
+                        setIsEditingDeliveredCount(true);
+                      }}
+                      data-testid="button-edit-delivered-count"
+                      className="h-7"
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                </div>
+
+                {!isEditingDeliveredCount ? (
+                  <div className="p-3 bg-muted/30 rounded">
+                    <p className="text-lg font-semibold">
+                      {shipment.deliveredPackageCount || shipment.packageCount} / {shipment.packageCount} packages delivered
+                    </p>
+                    {shipment.deliveredPackageCount && shipment.deliveredPackageCount < shipment.packageCount && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        This is a partial delivery. Update the count as more packages arrive.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max={shipment.packageCount}
+                        value={deliveredCountInput}
+                        onChange={(e) => setDeliveredCountInput(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        data-testid="input-delivered-count"
+                      />
+                      <span className="text-sm text-muted-foreground">/ {shipment.packageCount}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Enter the number of packages that have been delivered (0 to {shipment.packageCount})
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          const count = parseInt(deliveredCountInput, 10);
+                          if (!isNaN(count) && count >= 0 && count <= shipment.packageCount) {
+                            updateDeliveredCountMutation.mutate(count);
+                          } else {
+                            toast({
+                              title: "Invalid Input",
+                              description: `Please enter a number between 0 and ${shipment.packageCount}`,
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        disabled={updateDeliveredCountMutation.isPending}
+                        data-testid="button-save-delivered-count"
+                      >
+                        <Save className="h-3 w-3 mr-1" />
+                        {updateDeliveredCountMutation.isPending ? "Saving..." : "Save"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditingDeliveredCount(false)}
+                        disabled={updateDeliveredCountMutation.isPending}
+                        data-testid="button-cancel-delivered-count"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {shipment.packageCount > 1 && (
             <>
