@@ -173,42 +173,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const spreadsheetId = process.env.GOOGLE_SHEET_ID;
       if (!spreadsheetId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "GOOGLE_SHEET_ID not configured",
           message: "Please set GOOGLE_SHEET_ID in your environment variables"
         });
       }
 
       if (!googleSheetsService.isConfigured()) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "Google Sheets service not configured",
           message: "Please set GOOGLE_SERVICE_ACCOUNT_JSON in your environment variables"
         });
       }
 
+      console.log('🔄 Starting Google Sheets sync...');
+
       // Read shipment data from Output sheet
       const sheetData = await googleSheetsService.readShipmentData(spreadsheetId, "Output");
-      
+      console.log(`📊 Found ${sheetData.length} shipments in Google Sheets`);
+
       // Get current tracking numbers from the sheet
       const sheetTrackingNumbers = sheetData.map(row => row.trackingnumber || row["tracking number"]);
-      
+
       // Get all shipments currently in database
       const dbShipments = await storage.getAllShipments();
-      
+
       // Delete shipments that are no longer in the Output sheet
       const shipmentsToDelete = dbShipments.filter(
         dbShipment => !sheetTrackingNumbers.includes(dbShipment.trackingNumber)
       );
-      
+
       for (const shipment of shipmentsToDelete) {
         await storage.deleteShipment(shipment.trackingNumber);
-        console.log(`Deleted shipment ${shipment.trackingNumber} - no longer in Output sheet`);
+        console.log(`🗑️  Deleted shipment ${shipment.trackingNumber} - no longer in Output sheet`);
       }
-      
+
       const results = [];
       for (const row of sheetData) {
         const trackingNumber = row.trackingnumber || row["tracking number"];
         try {
+          // Check if we should skip FedEx API call (smart caching)
+          const existingShipment = dbShipments.find(s => s.trackingNumber === trackingNumber);
+          const shouldRefreshFromFedEx = shouldRefreshShipment(existingShipment);
+
           // Look up additional data from ALL INBOUND sheet (read-only)
           let inboundRow = null;
           try {
@@ -216,15 +223,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (error) {
             console.log(`Could not find tracking ${trackingNumber} in ALL INBOUND sheet`);
           }
-          
+
           // Get data from FedEx API as source of truth for status/tracking
-          const fedexData = await fedExService.getTrackingInfo(trackingNumber);
-          
+          let fedexData = null;
+          if (shouldRefreshFromFedEx) {
+            console.log(`🔍 Fetching FedEx data for ${trackingNumber}`);
+            fedexData = await fedExService.getTrackingInfo(trackingNumber);
+          } else {
+            console.log(`⚡ Using cached data for ${trackingNumber} (${existingShipment?.status})`);
+            // Parse cached FedEx data
+            if (existingShipment?.fedexRawData) {
+              try {
+                fedexData = JSON.parse(existingShipment.fedexRawData);
+              } catch (e) {
+                console.warn(`Could not parse cached FedEx data for ${trackingNumber}`);
+              }
+            }
+          }
+
           // Merge Output + ALL INBOUND + FedEx data
           const shipmentData = {
             trackingNumber: trackingNumber,
             // FedEx as source of truth for status
-            status: fedexData?.status || "Pending",
+            status: fedexData?.status || existingShipment?.status || "Pending",
             // Priority: ALL INBOUND > Output > FedEx for expected delivery
             scheduledDelivery: inboundRow?.["scheduled delivery date"] || row.expected_delivery || row.expecteddelivery || row["expected delivery"] || fedexData?.estimatedDelivery || null,
             // ALL INBOUND data for shipper/recipient info
@@ -240,12 +261,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             direction: inboundRow?.direction || null,
             serviceType: row.service_type || inboundRow?.["service type"] || null,
             googleSheetRow: null,
-            fedexRawData: fedexData ? JSON.stringify(fedexData) : null,
+            fedexRawData: fedexData ? JSON.stringify(fedexData) : existingShipment?.fedexRawData,
+            // Auto-populate child tracking numbers from FedEx API
+            childTrackingNumbers: fedexData?.childTrackingNumbers || existingShipment?.childTrackingNumbers || null,
           };
-          
+
           const validatedData = insertShipmentSchema.parse(shipmentData);
           const shipment = await storage.upsertShipment(validatedData);
-          
+
           // Log successful sync
           await storage.createSyncLog({
             source: "google_sheets",
@@ -256,16 +279,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sheetData: JSON.stringify(row),
             responseData: fedexData ? JSON.stringify(fedexData) : null,
           });
-          
-          results.push({ 
-            success: true, 
-            shipment, 
+
+          results.push({
+            success: true,
+            shipment,
             trackingNumber,
-            source: "google_sheets_merged_with_fedex"
+            source: shouldRefreshFromFedEx ? "google_sheets_merged_with_fedex" : "google_sheets_with_cached_fedex",
+            childTrackingNumbers: fedexData?.childTrackingNumbers || []
           });
         } catch (error) {
           console.error(`Error processing tracking number ${trackingNumber}:`, error);
-          
+
           // Log failed sync
           await storage.createSyncLog({
             source: "google_sheets",
@@ -276,9 +300,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sheetData: JSON.stringify(row),
             responseData: null,
           });
-          
-          results.push({ 
-            success: false, 
+
+          results.push({
+            success: false,
             trackingNumber,
             sheetData: row,
             error: error instanceof Error ? error.message : "Unknown error",
@@ -288,20 +312,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const successCount = results.filter(r => r.success).length;
+      const queueStatus = fedExService.getQueueStatus();
+
+      console.log(`✅ Sync complete: ${successCount}/${sheetData.length} successful`);
+
       res.json({
         total: sheetData.length,
         successful: successCount,
         failed: sheetData.length - successCount,
+        queueStatus,
         results
       });
     } catch (error) {
       console.error("Error syncing from Google Sheets:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to sync from Google Sheets",
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
+
+  /**
+   * Smart caching: Determine if shipment needs to be refreshed from FedEx API
+   */
+  function shouldRefreshShipment(shipment: any): boolean {
+    if (!shipment) return true; // New shipment, always fetch
+    if (!shipment.lastUpdate) return true; // No last update, always fetch
+
+    const now = Date.now();
+    const lastUpdate = new Date(shipment.lastUpdate).getTime();
+    const hoursSinceUpdate = (now - lastUpdate) / (1000 * 60 * 60);
+
+    // Don't refresh delivered or manually completed shipments
+    if (shipment.status === 'delivered' || shipment.manuallyCompleted === 1) {
+      return false;
+    }
+
+    // Refresh out_for_delivery every 30 minutes
+    if (shipment.status === 'out_for_delivery' && hoursSinceUpdate < 0.5) {
+      return false;
+    }
+
+    // Refresh in_transit every 2 hours
+    if (shipment.status === 'in_transit' && hoursSinceUpdate < 2) {
+      return false;
+    }
+
+    // Refresh pending/exception more frequently (every hour)
+    if ((shipment.status === 'pending' || shipment.status === 'exception') && hoursSinceUpdate < 1) {
+      return false;
+    }
+
+    return true; // Refresh if none of the conditions above matched
+  }
 
   // Validate tracking number with FedEx
   app.post("/api/fedex/validate/:trackingNumber", async (req, res) => {
@@ -582,7 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Shipment not found" });
       }
 
-      console.log(`Refreshing tracking data for: ${trackingNumber}`);
+      console.log(`🔄 Refreshing tracking data for: ${trackingNumber}`);
 
       // Check if FedEx service is configured
       if (!fedExService.isConfigured()) {
@@ -594,7 +657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Get live tracking data from FedEx
+      // Get live tracking data from FedEx (will be queued automatically)
       const fedexData = await fedExService.getTrackingInfo(trackingNumber);
 
       if (!fedexData) {
@@ -607,19 +670,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`Successfully retrieved FedEx data for: ${trackingNumber}`);
-      console.log(`FedEx Status: ${fedexData.status}`);
-      console.log(`FedEx Estimated Delivery: ${fedexData.estimatedDelivery}`);
-      console.log(`FedEx Events Count: ${fedexData.events?.length || 0}`);
+      console.log(`✅ Successfully retrieved FedEx data for: ${trackingNumber}`);
+      console.log(`📦 Status: ${fedexData.status}`);
+      console.log(`📅 Estimated Delivery: ${fedexData.estimatedDelivery}`);
+      console.log(`📍 Events: ${fedexData.events?.length || 0}`);
+      if (fedexData.childTrackingNumbers && fedexData.childTrackingNumbers.length > 0) {
+        console.log(`👶 Child Tracking Numbers: ${fedexData.childTrackingNumbers.join(', ')}`);
+      }
 
-      // Update shipment with latest FedEx data
+      // Update shipment with latest FedEx data including child tracking numbers
       await storage.updateShipment(shipment.id, {
         status: fedexData.status || shipment.status,
         scheduledDelivery: fedexData.estimatedDelivery || shipment.scheduledDelivery,
         fedexRawData: JSON.stringify(fedexData),
+        childTrackingNumbers: fedexData.childTrackingNumbers || shipment.childTrackingNumbers,
       });
 
-      console.log(`Updated shipment ${trackingNumber} with status: ${fedexData.status}`);
+      console.log(`✅ Updated shipment ${trackingNumber} with status: ${fedexData.status}`);
 
       // Get updated shipment
       const updatedShipment = await storage.getShipmentByTracking(trackingNumber);
@@ -627,10 +694,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         message: "Tracking information refreshed from FedEx",
         shipment: updatedShipment,
-        fedexData
+        fedexData,
+        queueStatus: fedExService.getQueueStatus()
       });
     } catch (error) {
-      console.error("Error refreshing shipment:", error);
+      console.error("❌ Error refreshing shipment:", error);
       // Return graceful error with existing data
       const shipment = await storage.getShipmentByTracking(req.params.trackingNumber);
       res.json({
@@ -640,6 +708,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
+  });
+
+  // Get FedEx API queue status
+  app.get("/api/fedex/queue-status", (req, res) => {
+    const status = fedExService.getQueueStatus();
+    res.json({
+      ...status,
+      message: status.isProcessing
+        ? `Processing ${status.queueLength} requests...`
+        : status.queueLength > 0
+        ? `${status.queueLength} requests queued`
+        : "Queue empty"
+    });
   });
 
   const httpServer = createServer(app);
