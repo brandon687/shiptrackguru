@@ -117,6 +117,7 @@ export class FedExService {
   /**
    * Get associated shipments for a master tracking number
    * This retrieves child tracking numbers for MPS (Multi-Piece Shipment) packages
+   * Uses multiple strategies to find all child tracking numbers
    */
   async getAssociatedShipments(masterTrackingNumber: string): Promise<string[]> {
     if (!this.isConfigured()) {
@@ -124,15 +125,26 @@ export class FedExService {
       return [];
     }
 
+    const childNumbers: string[] = [];
+
     try {
       const token = await this.getAccessToken();
 
+      // Strategy 1: Query using STANDARD_MPS package identifier
+      // This tells FedEx to return all child tracking numbers for the master
+      console.log(`🔍 Querying FedEx for child tracking numbers of master ${masterTrackingNumber}...`);
+
       const response = await axios.post(
-        `${this.baseUrl}/track/v1/associatedshipments`,
+        `${this.baseUrl}/track/v1/trackingnumbers`,
         {
           trackingInfo: [{
             trackingNumberInfo: {
               trackingNumber: masterTrackingNumber
+            },
+            // Specify this is a Master Package Shipment query
+            packageIdentifier: {
+              type: "STANDARD_MPS",
+              value: masterTrackingNumber
             }
           }],
           includeDetailedScans: false
@@ -147,20 +159,81 @@ export class FedExService {
         }
       );
 
-      const childNumbers: string[] = [];
-      const shipments = response.data.output?.associatedShipments || [];
+      // Extract all tracking numbers from the response
+      const completeTrackResults = response.data.output?.completeTrackResults || [];
 
-      for (const shipment of shipments) {
-        if (shipment.trackingNumber && shipment.trackingNumber !== masterTrackingNumber) {
-          childNumbers.push(shipment.trackingNumber);
+      for (const completeResult of completeTrackResults) {
+        const trackResults = completeResult.trackResults || [];
+
+        for (const trackResult of trackResults) {
+          const trackingNum = trackResult.trackingNumberInfo?.trackingNumber;
+
+          if (trackingNum && !childNumbers.includes(trackingNum)) {
+            childNumbers.push(trackingNum);
+          }
+
+          // Check for sequential tracking numbers
+          const sequentialNum = trackResult.trackingNumberInfo?.sequentialTrackingNumber;
+          if (sequentialNum && !childNumbers.includes(sequentialNum)) {
+            childNumbers.push(sequentialNum);
+          }
         }
       }
 
-      console.log(`🔗 Found ${childNumbers.length} associated shipments for ${masterTrackingNumber}`);
-      return childNumbers;
+      console.log(`✅ Found ${childNumbers.length} total tracking numbers via MPS query`);
 
     } catch (error: any) {
-      console.warn(`Could not retrieve associated shipments for ${masterTrackingNumber}:`, error.response?.data || error.message);
+      console.warn(`⚠️  MPS query failed:`, error.response?.data?.errors?.[0]?.message || error.message);
+    }
+
+    // Strategy 2: Try the associatedshipments endpoint as fallback
+    if (childNumbers.length === 0 || childNumbers.length === 1) {
+      try {
+        const token = await this.getAccessToken();
+
+        const response = await axios.post(
+          `${this.baseUrl}/track/v1/associatedshipments`,
+          {
+            trackingInfo: [{
+              trackingNumberInfo: {
+                trackingNumber: masterTrackingNumber
+              }
+            }],
+            includeDetailedScans: false
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "X-locale": "en_US",
+              "Authorization": `Bearer ${token}`,
+            },
+            timeout: this.requestTimeout,
+          }
+        );
+
+        const shipments = response.data.output?.associatedShipments || [];
+        for (const shipment of shipments) {
+          if (shipment.trackingNumber && !childNumbers.includes(shipment.trackingNumber)) {
+            childNumbers.push(shipment.trackingNumber);
+          }
+        }
+
+        console.log(`✅ Found ${shipments.length} tracking numbers via associatedshipments endpoint`);
+
+      } catch (error: any) {
+        console.warn(`⚠️  associatedshipments query failed:`, error.response?.data?.errors?.[0]?.message || error.message);
+      }
+    }
+
+    // Remove the master tracking number to return only children
+    const childrenOnly = childNumbers.filter(num => num !== masterTrackingNumber);
+
+    if (childrenOnly.length > 0) {
+      console.log(`🔗 Found ${childrenOnly.length} child tracking numbers for master ${masterTrackingNumber}`);
+      console.log(`   📦 Children: ${childrenOnly.join(', ')}`);
+      return childrenOnly;
+    } else {
+      console.log(`⚠️  No child tracking numbers found for ${masterTrackingNumber}`);
       return [];
     }
   }
