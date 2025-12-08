@@ -132,6 +132,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint: Get child tracking numbers for a master tracking number
+  app.get("/api/fedex/child-tracking/:masterTrackingNumber", async (req, res) => {
+    try {
+      const { masterTrackingNumber } = req.params;
+
+      if (!fedExService.isConfigured()) {
+        return res.status(400).json({
+          error: "FedEx API not configured",
+          message: "Please configure FEDEX_API_KEY and FEDEX_SECRET_KEY"
+        });
+      }
+
+      console.log(`🔍 Looking up child tracking numbers for master: ${masterTrackingNumber}`);
+
+      // Get child tracking numbers using our smart discovery
+      const childTrackingNumbers = await fedExService.getAssociatedShipments(masterTrackingNumber);
+
+      // Also get full tracking info to show the package count
+      const trackingInfo = await fedExService.getTrackingInfo(masterTrackingNumber);
+
+      res.json({
+        masterTrackingNumber,
+        childTrackingNumbers,
+        childCount: childTrackingNumbers.length,
+        packageCount: trackingInfo ? parseInt(trackingInfo.rawApiResponse?.output?.completeTrackResults?.[0]?.trackResults?.[0]?.packageDetails?.count || '1') : null,
+        hasAssociatedShipments: trackingInfo?.rawApiResponse?.output?.completeTrackResults?.[0]?.trackResults?.[0]?.additionalTrackingInfo?.hasAssociatedShipments || false,
+        trackingInfo
+      });
+    } catch (error) {
+      console.error("Error getting child tracking numbers:", error);
+      res.status(500).json({ error: "Failed to get child tracking numbers" });
+    }
+  });
+
   // Bulk import shipments
   app.post("/api/shipments/bulk", async (req, res) => {
     try {
