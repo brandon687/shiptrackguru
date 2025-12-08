@@ -71,8 +71,17 @@ export function BulkImport({ onImport }: BulkImportProps) {
     lines.forEach((line, index) => {
       if (!line.trim()) return;
 
-      // Skip header row if it contains "Tracking Number"
-      if (line.includes("Tracking Number") && index === 0) return;
+      // Skip header row - check for common header patterns (case-insensitive)
+      const upperLine = line.toUpperCase();
+      if (index === 0 && (
+        upperLine.includes("TRACKING NUMBER") ||
+        upperLine.includes("TRACKING_NUMBER") ||
+        upperLine.includes("MASTER TRACKING") ||
+        upperLine.includes("NO. OF PACKAGES") ||
+        upperLine.includes("SHIPPER NAME")
+      )) {
+        return;
+      }
 
       const parts = parseLine(line);
 
@@ -80,6 +89,13 @@ export function BulkImport({ onImport }: BulkImportProps) {
       // Recipient contact name, Recipient company, Master tracking number, No. of packages,
       // Package Type, Pkg Wt (Lbs), Total Wt (Lbs), Direction, Service type
       const trackingNumber = parts[0]?.trim() || "";
+
+      // Skip if tracking number is empty or looks like a header
+      if (!trackingNumber) return;
+      if (trackingNumber.toUpperCase().includes("TRACKING")) return;
+      if (trackingNumber.toUpperCase().includes("NUMBER")) return;
+      if (!/^\d+$/.test(trackingNumber)) return; // Must be numeric only
+
       const status = parts[1]?.trim() || "Pending";
       const scheduledDelivery = parts[2]?.trim() || undefined;
       const shipperName = parts[3]?.trim() || undefined;
@@ -93,8 +109,6 @@ export function BulkImport({ onImport }: BulkImportProps) {
       const totalWeight = parts[11]?.trim() ? `${parts[11].trim()}LB` : undefined;
       const direction = parts[12]?.trim() || undefined;
       const serviceType = parts[13]?.trim() || undefined;
-
-      if (!trackingNumber) return;
 
       const packageCount = parseInt(packageCountStr);
 
