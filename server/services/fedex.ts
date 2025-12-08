@@ -115,6 +115,57 @@ export class FedExService {
   }
 
   /**
+   * Get associated shipments for a master tracking number
+   * This retrieves child tracking numbers for MPS (Multi-Piece Shipment) packages
+   */
+  async getAssociatedShipments(masterTrackingNumber: string): Promise<string[]> {
+    if (!this.isConfigured()) {
+      console.log("FedEx API not configured, skipping associated shipments lookup");
+      return [];
+    }
+
+    try {
+      const token = await this.getAccessToken();
+
+      const response = await axios.post(
+        `${this.baseUrl}/track/v1/associatedshipments`,
+        {
+          trackingInfo: [{
+            trackingNumberInfo: {
+              trackingNumber: masterTrackingNumber
+            }
+          }],
+          includeDetailedScans: false
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-locale": "en_US",
+            "Authorization": `Bearer ${token}`,
+          },
+          timeout: this.requestTimeout,
+        }
+      );
+
+      const childNumbers: string[] = [];
+      const shipments = response.data.output?.associatedShipments || [];
+
+      for (const shipment of shipments) {
+        if (shipment.trackingNumber && shipment.trackingNumber !== masterTrackingNumber) {
+          childNumbers.push(shipment.trackingNumber);
+        }
+      }
+
+      console.log(`🔗 Found ${childNumbers.length} associated shipments for ${masterTrackingNumber}`);
+      return childNumbers;
+
+    } catch (error: any) {
+      console.warn(`Could not retrieve associated shipments for ${masterTrackingNumber}:`, error.response?.data || error.message);
+      return [];
+    }
+  }
+
+  /**
    * Process queued requests one at a time with rate limiting
    */
   private async processQueue(): Promise<void> {
@@ -229,7 +280,7 @@ export class FedExService {
   /**
    * Parse FedEx API response and extract tracking information
    */
-  private parseTrackingResponse(trackingNumber: string, data: any): FedExTrackingInfo | null {
+  private async parseTrackingResponse(trackingNumber: string, data: any): Promise<FedExTrackingInfo | null> {
     const trackingResult = data.output?.completeTrackResults?.[0];
     if (!trackingResult) {
       console.warn(`No tracking results for ${trackingNumber}`);
@@ -243,7 +294,19 @@ export class FedExService {
     }
 
     // Extract child tracking numbers (for multi-package shipments)
-    const childTrackingNumbers = this.extractChildTrackingNumbers(data);
+    let childTrackingNumbers = this.extractChildTrackingNumbers(data);
+
+    // If this looks like a master tracking number with associated shipments, fetch them
+    const hasAssociatedShipments = latestStatus.additionalTrackingInfo?.hasAssociatedShipments;
+    const packageCount = latestStatus.packageDetails?.count;
+
+    if (hasAssociatedShipments && packageCount && parseInt(packageCount) > 1 && childTrackingNumbers.length === 0) {
+      console.log(`📦 Detected MPS shipment ${trackingNumber} with ${packageCount} packages, fetching associated shipments...`);
+      const associatedShipments = await this.getAssociatedShipments(trackingNumber);
+      if (associatedShipments.length > 0) {
+        childTrackingNumbers = associatedShipments;
+      }
+    }
 
     const result: FedExTrackingInfo = {
       trackingNumber,
@@ -287,6 +350,31 @@ export class FedExService {
           if (pkg.trackingNumber && !childNumbers.includes(pkg.trackingNumber)) {
             childNumbers.push(pkg.trackingNumber);
           }
+        }
+
+        // Check for MPS (Master Package Shipment) identifiers
+        const packageIdentifiers = result.additionalTrackingInfo?.packageIdentifiers || [];
+        for (const identifier of packageIdentifiers) {
+          if (identifier.type === 'STANDARD_MPS' && identifier.values) {
+            childNumbers.push(...identifier.values);
+          }
+        }
+
+        // Check for tracking numbers in consolidation and split shipments
+        const consolidationDetail = result.consolidationDetail || [];
+        for (const detail of consolidationDetail) {
+          if (detail.trackingNumber) {
+            childNumbers.push(detail.trackingNumber);
+          }
+        }
+      }
+
+      // Also check if there are multiple trackResults (each could be a child package)
+      const completeTrackResults = data.output?.completeTrackResults || [];
+      for (const completeResult of completeTrackResults) {
+        const trackNum = completeResult.trackingNumber;
+        if (trackNum && !childNumbers.includes(trackNum)) {
+          childNumbers.push(trackNum);
         }
       }
     } catch (error) {
