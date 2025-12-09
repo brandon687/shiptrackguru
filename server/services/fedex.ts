@@ -5,6 +5,7 @@ interface FedExTrackingInfo {
   status: string;
   statusDescription?: string; // FedEx's actual status text like "On the way"
   estimatedDelivery?: string;
+  lastEventTime?: string; // Latest tracking event timestamp
   lastLocation?: string;
   events: Array<{
     timestamp: string;
@@ -382,11 +383,16 @@ export class FedExService {
       }
     }
 
+    // Get the latest event timestamp (first event is the most recent)
+    const latestEvent = latestStatus?.scanEvents?.[0];
+    const lastEventTime = latestEvent?.date || latestStatus?.latestStatusDetail?.ancillaryDetails?.[0]?.date;
+
     const result: FedExTrackingInfo = {
       trackingNumber,
       status: this.mapFedExStatus(latestStatus?.latestStatusDetail?.code),
       statusDescription: latestStatus?.latestStatusDetail?.description, // FedEx's actual status text
       estimatedDelivery: latestStatus?.dateAndTimes?.find((d: any) => d.type === "ESTIMATED_DELIVERY")?.dateTime,
+      lastEventTime: lastEventTime, // Most recent tracking event timestamp
       lastLocation: this.formatLocation(latestStatus?.latestStatusDetail?.scanLocation),
       events: (latestStatus?.scanEvents || []).map((event: any) => ({
         timestamp: event.date,

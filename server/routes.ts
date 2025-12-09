@@ -403,8 +403,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // FedEx as source of truth for status
             status: fedexData?.status || existingShipment?.status || "Pending",
             statusDescription: fedexData?.statusDescription || existingShipment?.statusDescription || null,
-            // Priority: ALL INBOUND > Output > FedEx for expected delivery
-            scheduledDelivery: inboundRow?.["scheduled delivery date"] || row.expected_delivery || row.expecteddelivery || row["expected delivery"] || fedexData?.estimatedDelivery || null,
+            // Priority: Use latest tracking event time from FedEx first, then estimated delivery, then sheets
+            scheduledDelivery: fedexData?.lastEventTime || fedexData?.estimatedDelivery || inboundRow?.["scheduled delivery date"] || row.expected_delivery || row.expecteddelivery || row["expected delivery"] || null,
             // ALL INBOUND data for shipper/recipient info
             shipperName: inboundRow?.["shipper name"] || null,
             shipperCompany: row.sender || inboundRow?.["shipper company"] || null,
@@ -885,7 +885,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updates: any = {
         status: fedexData.status || shipment.status,
         statusDescription: fedexData.statusDescription || shipment.statusDescription,
-        scheduledDelivery: fedexData.estimatedDelivery || shipment.scheduledDelivery,
+        // Use latest event time if available, otherwise use estimated delivery
+        scheduledDelivery: fedexData.lastEventTime || fedexData.estimatedDelivery || shipment.scheduledDelivery,
         fedexRawData: JSON.stringify(fedexData),
       };
 
