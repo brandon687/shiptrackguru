@@ -92,13 +92,29 @@ export default function Dashboard() {
   };
 
   const handleSync = async () => {
-    console.log("Manual sync - refreshing shipments list only");
+    console.log("Manual sync - syncing from Google Sheets");
     // Note: Bulk FedEx refresh is disabled to prevent rate limiting
     // Use the refresh button in individual shipment detail panels instead
 
-    // Refresh the shipments list
-    queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
-    setLastSynced(new Date());
+    try {
+      // Sync from Google Sheets to get new tracking numbers
+      const response = await fetch("/api/sync/google-sheets", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to sync from Google Sheets");
+      }
+
+      // Refresh the shipments list
+      queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tracking-numbers/all"] });
+      setLastSynced(new Date());
+    } catch (error) {
+      console.error("Error syncing:", error);
+      // Still update last synced time even on error
+      setLastSynced(new Date());
+    }
   };
 
   // Auto-refresh disabled to prevent FedEx API rate limiting
@@ -126,7 +142,7 @@ export default function Dashboard() {
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No shipments yet</h3>
               <p className="text-muted-foreground mb-4">
-                Data will automatically sync from your Google Sheet every 5 minutes
+                Click "Refresh Tracking" to sync data from your Google Sheet
               </p>
               <p className="text-sm text-muted-foreground mb-4">
                 Make sure you have GOOGLE_SERVICE_ACCOUNT_JSON and GOOGLE_SHEET_ID configured in your secrets
