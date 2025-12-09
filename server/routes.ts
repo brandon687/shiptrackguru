@@ -320,8 +320,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             serviceType: row.service_type || inboundRow?.["service type"] || null,
             googleSheetRow: null,
             fedexRawData: fedexData ? JSON.stringify(fedexData) : existingShipment?.fedexRawData,
-            // Auto-populate child tracking numbers from FedEx API
-            childTrackingNumbers: fedexData?.childTrackingNumbers || existingShipment?.childTrackingNumbers || null,
+            // CRITICAL: Preserve existing child tracking numbers if FedEx API doesn't return them
+            // Only update if FedEx API returns NEW child tracking numbers (length > 0)
+            // This prevents bulk imported child tracking numbers from being overwritten
+            childTrackingNumbers: (fedexData?.childTrackingNumbers && fedexData.childTrackingNumbers.length > 0)
+              ? fedexData.childTrackingNumbers
+              : (existingShipment?.childTrackingNumbers || null),
           };
 
           const validatedData = insertShipmentSchema.parse(shipmentData);
