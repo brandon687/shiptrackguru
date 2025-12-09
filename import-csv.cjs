@@ -1,6 +1,6 @@
 const fs = require('fs');
 const csv = require('csv-parser');
-const fetch = require('node-fetch');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 // Configuration
 const API_URL = process.argv[2] === '--local'

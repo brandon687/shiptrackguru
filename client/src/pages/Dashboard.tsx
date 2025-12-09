@@ -28,7 +28,17 @@ export default function Dashboard() {
     queryKey: ["/api/tracking-numbers/all"],
   });
 
-  const { data: scanningProgress } = useQuery({
+  interface ScanningProgress {
+    totalExpected: number;
+    totalScanned: number;
+    percentageScanned: number;
+    pendingPackages: number;
+    scannedNotComplete: number;
+    completedPackages: number;
+    lastUpdate: string;
+  }
+
+  const { data: scanningProgress } = useQuery<ScanningProgress>({
     queryKey: ["/api/scanning-progress"],
     refetchInterval: 2000, // Refresh every 2 seconds for live updates
   });
