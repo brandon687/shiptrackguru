@@ -741,13 +741,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`👶 Child Tracking Numbers: ${fedexData.childTrackingNumbers.join(', ')}`);
       }
 
-      // Update shipment with latest FedEx data including child tracking numbers
-      await storage.updateShipment(shipment.id, {
+      // Update shipment with latest FedEx data
+      // IMPORTANT: Only update childTrackingNumbers if FedEx returns NEW ones (not empty)
+      const updates: any = {
         status: fedexData.status || shipment.status,
         scheduledDelivery: fedexData.estimatedDelivery || shipment.scheduledDelivery,
         fedexRawData: JSON.stringify(fedexData),
-        childTrackingNumbers: fedexData.childTrackingNumbers || shipment.childTrackingNumbers,
-      });
+      };
+
+      // Only update childTrackingNumbers if FedEx API explicitly returns new ones (length > 0)
+      // This preserves bulk imported child tracking numbers
+      if (fedexData.childTrackingNumbers && fedexData.childTrackingNumbers.length > 0) {
+        updates.childTrackingNumbers = fedexData.childTrackingNumbers;
+      }
+
+      await storage.updateShipment(shipment.id, updates);
 
       console.log(`✅ Updated shipment ${trackingNumber} with status: ${fedexData.status}`);
 
