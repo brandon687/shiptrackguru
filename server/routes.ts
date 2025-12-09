@@ -47,6 +47,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const shipments = await storage.getAllShipments();
 
+      // Get the most recent scanning session to see what's been scanned today
+      const recentSessions = await storage.getAllScannedSessions();
+      const todaySession = recentSessions.length > 0 ? recentSessions[0] : null;
+      const scannedToday = new Set(todaySession?.scannedNumbers || []);
+
       // Calculate total expected tracking numbers (master + children)
       let totalExpected = 0;
       let totalScanned = 0;
@@ -55,19 +60,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Count master tracking number
         totalExpected += 1;
 
-        // Only count as scanned if manually marked as completed
-        // notScanned = 0 is the default, doesn't mean it was actually scanned
-        // Only manuallyCompleted = 1 means it was physically scanned and marked
-        if (shipment.manuallyCompleted === 1) {
+        // Check if this tracking number was scanned in today's session
+        // OR if it's been marked as complete
+        if (scannedToday.has(shipment.trackingNumber) || shipment.manuallyCompleted === 1) {
           totalScanned += 1;
         }
 
         // Count child tracking numbers if they exist
         if (shipment.childTrackingNumbers && shipment.childTrackingNumbers.length > 0) {
-          totalExpected += shipment.childTrackingNumbers.length;
-          // If master is marked complete, assume children are too
-          if (shipment.manuallyCompleted === 1) {
-            totalScanned += shipment.childTrackingNumbers.length;
+          for (const childTracking of shipment.childTrackingNumbers) {
+            totalExpected += 1;
+            // Check if child was scanned or if parent is complete
+            if (scannedToday.has(childTracking) || shipment.manuallyCompleted === 1) {
+              totalScanned += 1;
+            }
           }
         }
       }
