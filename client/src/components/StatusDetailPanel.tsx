@@ -8,6 +8,7 @@ import type { Shipment } from "./ShipmentTable";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { formatDateTimePST } from "@/lib/utils";
 
 interface StatusDetailPanelProps {
   title: string;
@@ -161,7 +162,7 @@ export function StatusDetailPanel({ title, shipments, onClose }: StatusDetailPan
                         <div>
                           <span className="text-muted-foreground">Expected: </span>
                           <span className="font-medium">
-                            {new Date(item.scheduledDelivery).toLocaleDateString()}
+                            {formatDateTimePST(item.scheduledDelivery)}
                           </span>
                         </div>
                       )}

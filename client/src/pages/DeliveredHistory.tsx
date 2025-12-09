@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Package, ExternalLink } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatDateTimePST } from "@/lib/utils";
 
 interface DeliveredShipment {
   id: string;
@@ -28,6 +29,10 @@ export default function DeliveredHistory() {
   };
 
   const formatDate = (dateString: string) => {
+    // Use PST format for consistency, or fall back to short format if needed
+    const pstFormat = formatDateTimePST(dateString);
+    if (pstFormat) return pstFormat;
+
     return new Date(dateString).toLocaleDateString('en-US', {
       month: '2-digit',
       day: '2-digit',

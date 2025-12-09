@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatDateTimePST } from "@/lib/utils";
 
 export default function Analytics() {
   const { data: rawApiShipments, isLoading } = useQuery({
@@ -177,7 +178,7 @@ export default function Analytics() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Expected Delivery:</span>
-                      <span>{sampleShipment.scheduledDelivery || "N/A"}</span>
+                      <span>{formatDateTimePST(sampleShipment.scheduledDelivery) || "N/A"}</span>
                     </div>
                   </div>
                 </div>

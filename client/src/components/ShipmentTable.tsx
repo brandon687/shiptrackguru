@@ -14,6 +14,7 @@ import { MoreVertical, Search, Copy, Eye, RefreshCw, ArrowUpDown, Filter, X, Tra
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatDateTimePST } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -356,7 +357,7 @@ export function ShipmentTable({ shipments, onViewDetails }: ShipmentTableProps) 
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {shipment.scheduledDelivery || "—"}
+                  {formatDateTimePST(shipment.scheduledDelivery) || "—"}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>

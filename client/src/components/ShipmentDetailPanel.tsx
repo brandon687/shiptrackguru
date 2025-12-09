@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatDateTimePST } from "@/lib/utils";
 
 interface ShipmentDetailPanelProps {
   shipment: Shipment | null;
@@ -488,7 +489,7 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                   Scheduled Delivery
                 </p>
-                <p className="text-lg font-semibold">{shipment.scheduledDelivery}</p>
+                <p className="text-lg font-semibold">{formatDateTimePST(shipment.scheduledDelivery)}</p>
               </div>
             </>
           )}
