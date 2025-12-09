@@ -125,21 +125,9 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
     },
   });
 
-  // Auto-refresh tracking data every 2 minutes
-  useEffect(() => {
-    if (!shipment) return;
-
-    // Initial refresh when panel opens
-    refreshTrackingMutation.mutate();
-
-    // Set up interval for auto-refresh every 2 minutes to avoid rate limits
-    const intervalId = setInterval(() => {
-      refreshTrackingMutation.mutate();
-    }, 120000); // 2 minutes
-
-    // Cleanup interval when component unmounts or shipment changes
-    return () => clearInterval(intervalId);
-  }, [shipment?.trackingNumber]); // Only re-run if tracking number changes
+  // REMOVED: Auto-refresh logic that was calling FedEx API on every card click
+  // Now tracking only refreshes when user explicitly clicks "Refresh Tracking" button
+  // This prevents unnecessary API calls and preserves child tracking numbers
 
   // Now we can safely return early after all hooks have been called
   if (!shipment) return null;
