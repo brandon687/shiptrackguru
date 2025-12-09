@@ -320,13 +320,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             serviceType: row.service_type || inboundRow?.["service type"] || null,
             googleSheetRow: null,
             fedexRawData: fedexData ? JSON.stringify(fedexData) : existingShipment?.fedexRawData,
-            // CRITICAL: Preserve existing child tracking numbers if FedEx API doesn't return them
-            // Only update if FedEx API returns NEW child tracking numbers (length > 0)
-            // This prevents bulk imported child tracking numbers from being overwritten
-            childTrackingNumbers: (fedexData?.childTrackingNumbers && fedexData.childTrackingNumbers.length > 0)
-              ? fedexData.childTrackingNumbers
-              : (existingShipment?.childTrackingNumbers || null),
+            // DON'T include childTrackingNumbers in Google Sheets sync - preserve what's in DB
+            // Only update childTrackingNumbers if FedEx API explicitly returns new ones
           };
+
+          // Add childTrackingNumbers ONLY if FedEx API returned new ones (not empty)
+          if (fedexData?.childTrackingNumbers && fedexData.childTrackingNumbers.length > 0) {
+            (shipmentData as any).childTrackingNumbers = fedexData.childTrackingNumbers;
+          }
 
           const validatedData = insertShipmentSchema.parse(shipmentData);
           const shipment = await storage.upsertShipment(validatedData);
