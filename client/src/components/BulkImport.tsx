@@ -221,7 +221,7 @@ export function BulkImport({ onImport }: BulkImportProps) {
 
   const handleImport = async () => {
     const validShipments = parsedShipments.filter(s => s.isValid);
-    
+
     if (validShipments.length === 0) {
       toast({
         title: "No valid shipments",
@@ -230,6 +230,13 @@ export function BulkImport({ onImport }: BulkImportProps) {
       });
       return;
     }
+
+    // Debug: Log what we're sending
+    console.log('📤 Sending to API:', validShipments.map(s => ({
+      trackingNumber: s.trackingNumber,
+      childTrackingNumbers: s.childTrackingNumbers,
+      childCount: s.childTrackingNumbers?.length || 0
+    })));
 
     setIsImporting(true);
     try {
