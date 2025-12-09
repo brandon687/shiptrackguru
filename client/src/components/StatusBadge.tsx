@@ -6,6 +6,7 @@ export type ShipmentStatus = string;
 
 interface StatusBadgeProps {
   status: ShipmentStatus;
+  statusDescription?: string | null; // FedEx's actual status text like "On the way"
   className?: string;
 }
 
@@ -103,13 +104,16 @@ const defaultConfig: StatusConfig = {
   className: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",
 };
 
-export function StatusBadge({ status, className = "" }: StatusBadgeProps) {
-  // Get config for this status, or use default if not found
-  const config = statusConfig[status] || {
+export function StatusBadge({ status, statusDescription, className = "" }: StatusBadgeProps) {
+  // Prefer FedEx's statusDescription if available, otherwise use mapped config
+  const displayText = statusDescription || status;
+
+  // Get config for this status (for icon and colors), or use default if not found
+  const config = statusConfig[status] || statusConfig[displayText] || {
     ...defaultConfig,
-    label: status, // Use the actual status string as the label
+    label: displayText, // Use the actual status string as the label
   };
-  
+
   const Icon = config.icon;
 
   return (
@@ -119,7 +123,7 @@ export function StatusBadge({ status, className = "" }: StatusBadgeProps) {
       data-testid={`badge-status-${status}`}
     >
       <Icon className="h-3 w-3" />
-      {config.label}
+      {displayText}
     </Badge>
   );
 }

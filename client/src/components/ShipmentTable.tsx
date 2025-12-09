@@ -29,6 +29,7 @@ export interface Shipment {
   id: string;
   trackingNumber: string;
   status: string;
+  statusDescription?: string | null; // FedEx's actual status text like "On the way"
   scheduledDelivery: string | null;
   shipperName: string | null;
   shipperCompany: string | null;
@@ -313,7 +314,7 @@ export function ShipmentTable({ shipments, onViewDetails }: ShipmentTableProps) 
                 data-testid={`row-shipment-${shipment.trackingNumber}`}
               >
                 <TableCell>
-                  <StatusBadge status={shipment.status as ShipmentStatus} />
+                  <StatusBadge status={shipment.status as ShipmentStatus} statusDescription={shipment.statusDescription} />
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <a

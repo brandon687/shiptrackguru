@@ -21,6 +21,7 @@ export const shipments = pgTable("shipments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   trackingNumber: text("tracking_number").notNull(),
   status: text("status").notNull(),
+  statusDescription: text("status_description"), // FedEx's actual status text like "On the way"
   scheduledDelivery: text("scheduled_delivery"),
   shipperName: text("shipper_name"),
   shipperCompany: text("shipper_company"),

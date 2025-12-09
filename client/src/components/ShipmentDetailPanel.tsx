@@ -204,7 +204,7 @@ export function ShipmentDetailPanel({ shipment, onClose }: ShipmentDetailPanelPr
                   {shipment.trackingNumber}
                 </a>
               </div>
-              <StatusBadge status={shipment.status} />
+              <StatusBadge status={shipment.status} statusDescription={shipment.statusDescription} />
             </div>
 
             <div className="flex gap-2">

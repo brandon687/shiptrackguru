@@ -8,6 +8,13 @@
       "when": 1765235127334,
       "tag": "0000_careless_the_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1765297281661,
+      "tag": "0001_equal_sister_grimm",
+      "breakpoints": true
     }
   ]
 }

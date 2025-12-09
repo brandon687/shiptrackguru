@@ -322,6 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             trackingNumber: trackingNumber,
             // FedEx as source of truth for status
             status: fedexData?.status || existingShipment?.status || "Pending",
+            statusDescription: fedexData?.statusDescription || existingShipment?.statusDescription || null,
             // Priority: ALL INBOUND > Output > FedEx for expected delivery
             scheduledDelivery: inboundRow?.["scheduled delivery date"] || row.expected_delivery || row.expecteddelivery || row["expected delivery"] || fedexData?.estimatedDelivery || null,
             // ALL INBOUND data for shipper/recipient info
@@ -482,6 +483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (shipment) {
         await storage.updateShipment(shipment.id, {
           status: trackingInfo.status,
+          statusDescription: trackingInfo.statusDescription,
           fedexRawData: JSON.stringify(trackingInfo),
         });
       }
@@ -771,6 +773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // IMPORTANT: Only update childTrackingNumbers if FedEx returns NEW ones (not empty)
       const updates: any = {
         status: fedexData.status || shipment.status,
+        statusDescription: fedexData.statusDescription || shipment.statusDescription,
         scheduledDelivery: fedexData.estimatedDelivery || shipment.scheduledDelivery,
         fedexRawData: JSON.stringify(fedexData),
       };

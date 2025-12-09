@@ -3,6 +3,7 @@ import axios, { AxiosError } from "axios";
 interface FedExTrackingInfo {
   trackingNumber: string;
   status: string;
+  statusDescription?: string; // FedEx's actual status text like "On the way"
   estimatedDelivery?: string;
   lastLocation?: string;
   events: Array<{
@@ -384,6 +385,7 @@ export class FedExService {
     const result: FedExTrackingInfo = {
       trackingNumber,
       status: this.mapFedExStatus(latestStatus?.latestStatusDetail?.code),
+      statusDescription: latestStatus?.latestStatusDetail?.description, // FedEx's actual status text
       estimatedDelivery: latestStatus?.dateAndTimes?.find((d: any) => d.type === "ESTIMATED_DELIVERY")?.dateTime,
       lastLocation: this.formatLocation(latestStatus?.latestStatusDetail?.scanLocation),
       events: (latestStatus?.scanEvents || []).map((event: any) => ({
