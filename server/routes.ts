@@ -55,17 +55,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Count master tracking number
         totalExpected += 1;
 
-        // If marked as scanned (notScanned = 0) or completed (manuallyCompleted = 1)
-        if (shipment.notScanned === 0 || shipment.manuallyCompleted === 1) {
+        // Only count as scanned if manually marked as completed
+        // notScanned = 0 is the default, doesn't mean it was actually scanned
+        // Only manuallyCompleted = 1 means it was physically scanned and marked
+        if (shipment.manuallyCompleted === 1) {
           totalScanned += 1;
         }
 
         // Count child tracking numbers if they exist
         if (shipment.childTrackingNumbers && shipment.childTrackingNumbers.length > 0) {
           totalExpected += shipment.childTrackingNumbers.length;
-          // For simplicity, assume if master is scanned, children are too
-          // In future, could track individual child scanning status
-          if (shipment.notScanned === 0 || shipment.manuallyCompleted === 1) {
+          // If master is marked complete, assume children are too
+          if (shipment.manuallyCompleted === 1) {
             totalScanned += shipment.childTrackingNumbers.length;
           }
         }
