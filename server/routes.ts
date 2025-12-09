@@ -174,17 +174,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Expected array of shipments" });
       }
 
+      console.log(`📦 Bulk import: Receiving ${shipments.length} shipments`);
+
       const results = [];
       for (const shipmentData of shipments) {
         try {
+          console.log(`🔍 Processing shipment:`, {
+            trackingNumber: shipmentData.trackingNumber,
+            childTrackingNumbers: shipmentData.childTrackingNumbers,
+            hasChildren: !!shipmentData.childTrackingNumbers,
+            childCount: shipmentData.childTrackingNumbers?.length || 0
+          });
+
           const validatedData = insertShipmentSchema.parse(shipmentData);
+
+          console.log(`✅ Validated data:`, {
+            trackingNumber: validatedData.trackingNumber,
+            childTrackingNumbers: validatedData.childTrackingNumbers,
+            childCount: validatedData.childTrackingNumbers?.length || 0
+          });
+
           const shipment = await storage.upsertShipment(validatedData);
+
+          console.log(`💾 Saved to DB:`, {
+            trackingNumber: shipment.trackingNumber,
+            childTrackingNumbers: shipment.childTrackingNumbers,
+            childCount: shipment.childTrackingNumbers?.length || 0
+          });
+
           results.push({ success: true, shipment });
         } catch (error) {
-          results.push({ 
-            success: false, 
+          console.error(`❌ Error processing shipment ${shipmentData.trackingNumber}:`, error);
+          results.push({
+            success: false,
             trackingNumber: shipmentData.trackingNumber,
-            error: error instanceof Error ? error.message : "Unknown error" 
+            error: error instanceof Error ? error.message : "Unknown error"
           });
         }
       }
