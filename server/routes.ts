@@ -325,8 +325,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
 
           // Add childTrackingNumbers ONLY if FedEx API returned new ones (not empty)
+          // Don't add if the only "child" is the master itself
           if (fedexData?.childTrackingNumbers && fedexData.childTrackingNumbers.length > 0) {
-            (shipmentData as any).childTrackingNumbers = fedexData.childTrackingNumbers;
+            // Filter out the master tracking number itself from children
+            const actualChildren = fedexData.childTrackingNumbers.filter(
+              (child: string) => child !== trackingNumber
+            );
+            // Only add if there are actual children (not just the master)
+            if (actualChildren.length > 0) {
+              (shipmentData as any).childTrackingNumbers = actualChildren;
+            }
           }
 
           const validatedData = insertShipmentSchema.parse(shipmentData);
@@ -749,10 +757,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fedexRawData: JSON.stringify(fedexData),
       };
 
-      // Only update childTrackingNumbers if FedEx API explicitly returns new ones (length > 0)
+      // Only update childTrackingNumbers if FedEx API explicitly returns new ones
+      // Don't update if the only "child" is the master itself (useless data)
       // This preserves bulk imported child tracking numbers
       if (fedexData.childTrackingNumbers && fedexData.childTrackingNumbers.length > 0) {
-        updates.childTrackingNumbers = fedexData.childTrackingNumbers;
+        // Filter out the master tracking number itself from children
+        const actualChildren = fedexData.childTrackingNumbers.filter(
+          (child: string) => child !== trackingNumber
+        );
+        // Only update if there are actual children (not just the master)
+        if (actualChildren.length > 0) {
+          updates.childTrackingNumbers = actualChildren;
+        }
       }
 
       await storage.updateShipment(shipment.id, updates);
