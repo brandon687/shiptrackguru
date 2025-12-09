@@ -256,14 +256,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all shipments currently in database
       const dbShipments = await storage.getAllShipments();
 
-      // Delete shipments that are no longer in the Output sheet
-      const shipmentsToDelete = dbShipments.filter(
+      // Archive shipments that are no longer in the Output sheet (moved to Delivered History)
+      const shipmentsToArchive = dbShipments.filter(
         dbShipment => !sheetTrackingNumbers.includes(dbShipment.trackingNumber)
       );
 
-      for (const shipment of shipmentsToDelete) {
+      for (const shipment of shipmentsToArchive) {
+        // Check if it's not already in delivered history
+        const existingDelivered = await storage.getDeliveredShipmentByTracking(shipment.trackingNumber);
+        if (!existingDelivered) {
+          // Archive to delivered history
+          await storage.createDeliveredShipment({
+            trackingNumber: shipment.trackingNumber,
+            status: shipment.status,
+            shipperCompany: shipment.shipperCompany || null,
+            recipientCompany: shipment.recipientCompany || null,
+            serviceType: shipment.serviceType || null,
+            packageWeight: shipment.packageWeight || null,
+            packageCount: shipment.packageCount,
+            expectedDelivery: shipment.scheduledDelivery || null,
+            actualDelivery: new Date(),
+          });
+          console.log(`📦 Archived shipment ${shipment.trackingNumber} to Delivered History - removed from Output sheet`);
+        }
+
+        // Delete from active shipments
         await storage.deleteShipment(shipment.trackingNumber);
-        console.log(`🗑️  Deleted shipment ${shipment.trackingNumber} - no longer in Output sheet`);
       }
 
       const results = [];
