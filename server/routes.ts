@@ -613,6 +613,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk import shipments from CSV data
+  app.post("/api/shipments/bulk-import", async (req, res) => {
+    try {
+      const { shipments } = req.body;
+
+      if (!Array.isArray(shipments) || shipments.length === 0) {
+        return res.status(400).json({ error: "shipments must be a non-empty array" });
+      }
+
+      console.log(`📥 Bulk import request: ${shipments.length} shipments`);
+
+      const results = {
+        imported: 0,
+        errors: [] as Array<{ trackingNumber: string; error: string }>,
+      };
+
+      // Process each shipment
+      for (const shipmentData of shipments) {
+        try {
+          // Validate required fields
+          if (!shipmentData.trackingNumber) {
+            results.errors.push({
+              trackingNumber: 'unknown',
+              error: 'Missing tracking number',
+            });
+            continue;
+          }
+
+          // Ensure required fields have defaults
+          const processedData = {
+            ...shipmentData,
+            status: shipmentData.status || 'pending',
+            packageCount: shipmentData.packageCount || 1,
+          };
+
+          // Use upsert to update existing or create new
+          await storage.upsertShipment(processedData);
+          results.imported++;
+        } catch (error: any) {
+          console.error(`Failed to import ${shipmentData.trackingNumber}:`, error.message);
+          results.errors.push({
+            trackingNumber: shipmentData.trackingNumber || 'unknown',
+            error: error.message,
+          });
+        }
+      }
+
+      console.log(`✅ Bulk import complete: ${results.imported} successful, ${results.errors.length} errors`);
+      res.json(results);
+    } catch (error) {
+      console.error("Bulk import error:", error);
+      res.status(500).json({ error: "Failed to process bulk import" });
+    }
+  });
+
   // Get all sync logs
   app.get("/api/sync-logs", async (req, res) => {
     try {
