@@ -943,6 +943,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Refresh all active shipments from FedEx (for auto-updates)
+  app.post("/api/shipments/refresh-all-active", async (req, res) => {
+    try {
+      if (!fedExService.isConfigured()) {
+        return res.status(400).json({
+          error: "FedEx API not configured",
+          refreshed: 0
+        });
+      }
+
+      const shipments = await storage.getAllShipments();
+
+      // Only refresh shipments that aren't delivered or manually completed
+      const activeShipments = shipments.filter(s =>
+        s.status !== 'delivered' &&
+        s.status !== 'Delivered' &&
+        s.manuallyCompleted !== 1
+      );
+
+      console.log(`🔄 Auto-refreshing ${activeShipments.length} active shipments from FedEx`);
+
+      let refreshedCount = 0;
+      const errors = [];
+
+      for (const shipment of activeShipments) {
+        try {
+          const fedexData = await fedExService.getTrackingInfo(shipment.trackingNumber);
+
+          if (fedexData) {
+            await storage.updateShipment(shipment.id, {
+              status: fedexData.status,
+              statusDescription: fedexData.statusDescription,
+              scheduledDelivery: fedexData.lastEventTime || fedexData.estimatedDelivery || shipment.scheduledDelivery,
+              fedexRawData: JSON.stringify(fedexData),
+            });
+            refreshedCount++;
+          }
+        } catch (error) {
+          console.error(`Failed to refresh ${shipment.trackingNumber}:`, error);
+          errors.push(shipment.trackingNumber);
+        }
+      }
+
+      console.log(`✅ Refreshed ${refreshedCount}/${activeShipments.length} shipments`);
+
+      res.json({
+        message: `Refreshed ${refreshedCount} active shipments`,
+        total: activeShipments.length,
+        refreshed: refreshedCount,
+        errors: errors.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error refreshing active shipments:", error);
+      res.status(500).json({ error: "Failed to refresh shipments" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

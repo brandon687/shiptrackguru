@@ -123,8 +123,37 @@ export default function Dashboard() {
     }
   };
 
-  // Auto-refresh disabled to prevent FedEx API rate limiting
-  // Users should manually refresh individual shipments using the detail panel
+  // Auto-refresh FedEx tracking data every 5 minutes for active shipments
+  useEffect(() => {
+    const refreshFedExData = async () => {
+      try {
+        const response = await fetch("/api/shipments/refresh-all-active", {
+          method: "POST",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log(`📦 Auto-refreshed ${result.refreshed} active shipments`);
+
+          // Refresh the UI if any shipments were updated
+          if (result.refreshed > 0) {
+            queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to auto-refresh FedEx data:", error);
+      }
+    };
+
+    // Initial refresh
+    refreshFedExData();
+
+    // Set up interval for every 5 minutes (300000 ms)
+    const interval = setInterval(refreshFedExData, 300000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <>
