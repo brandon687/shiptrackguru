@@ -6,12 +6,13 @@ import { ShipmentDetailPanel } from "@/components/ShipmentDetailPanel";
 import { TrackingComparisonPanel } from "@/components/TrackingComparisonPanel";
 import { StatusDetailPanel } from "@/components/StatusDetailPanel";
 import { SyncStatus } from "@/components/SyncStatus";
-import { Package, Truck, CheckCircle2, AlertCircle } from "lucide-react";
+import { Package, Truck, CheckCircle2, AlertCircle, BarChart3 } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { transformShipmentsFromAPI } from "@/lib/shipmentUtils";
+import { Progress } from "@/components/ui/progress";
 
 export default function Dashboard() {
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
@@ -25,6 +26,11 @@ export default function Dashboard() {
 
   const { data: allTrackingNumbers } = useQuery<string[]>({
     queryKey: ["/api/tracking-numbers/all"],
+  });
+
+  const { data: scanningProgress } = useQuery({
+    queryKey: ["/api/scanning-progress"],
+    refetchInterval: 2000, // Refresh every 2 seconds for live updates
   });
 
   // Transform API data to ensure dates are properly parsed
@@ -155,7 +161,7 @@ export default function Dashboard() {
 
           {apiShipments && apiShipments.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <StatsCard
                   title="Total Shipments"
                   value={stats.total}
@@ -180,6 +186,34 @@ export default function Dashboard() {
                   icon={AlertCircle}
                   onClick={() => setShowStatusDetail('notScanned')}
                 />
+                <Card className="p-6 cursor-pointer hover-elevate group" onClick={() => setShowComparison(true)}>
+                  <div className="flex items-center justify-between space-x-2">
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        Scanning Progress
+                      </p>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-2xl font-bold">
+                          {scanningProgress ? `${scanningProgress.totalScanned}/${scanningProgress.totalExpected}` : "—/—"}
+                        </p>
+                        {scanningProgress && scanningProgress.percentageScanned !== undefined && (
+                          <span className="text-sm text-muted-foreground">
+                            ({scanningProgress.percentageScanned}%)
+                          </span>
+                        )}
+                      </div>
+                      {scanningProgress && scanningProgress.totalExpected > 0 && (
+                        <Progress
+                          value={scanningProgress.percentageScanned}
+                          className="mt-2 h-2"
+                        />
+                      )}
+                    </div>
+                    <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
+                      <BarChart3 className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+                </Card>
               </div>
 
               <div className="space-y-4">

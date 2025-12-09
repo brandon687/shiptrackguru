@@ -42,6 +42,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get scanning progress statistics
+  app.get("/api/scanning-progress", async (req, res) => {
+    try {
+      const shipments = await storage.getAllShipments();
+
+      // Calculate total expected tracking numbers (master + children)
+      let totalExpected = 0;
+      let totalScanned = 0;
+
+      for (const shipment of shipments) {
+        // Count master tracking number
+        totalExpected += 1;
+
+        // If marked as scanned (notScanned = 0) or completed (manuallyCompleted = 1)
+        if (shipment.notScanned === 0 || shipment.manuallyCompleted === 1) {
+          totalScanned += 1;
+        }
+
+        // Count child tracking numbers if they exist
+        if (shipment.childTrackingNumbers && shipment.childTrackingNumbers.length > 0) {
+          totalExpected += shipment.childTrackingNumbers.length;
+          // For simplicity, assume if master is scanned, children are too
+          // In future, could track individual child scanning status
+          if (shipment.notScanned === 0 || shipment.manuallyCompleted === 1) {
+            totalScanned += shipment.childTrackingNumbers.length;
+          }
+        }
+      }
+
+      // Calculate packages by status
+      const pendingPackages = shipments
+        .filter(s => s.notScanned === 0 && s.manuallyCompleted === 0)
+        .reduce((sum, s) => sum + s.packageCount, 0);
+
+      const scannedNotComplete = shipments
+        .filter(s => s.notScanned === 0 && s.manuallyCompleted === 0)
+        .length;
+
+      const completedPackages = shipments
+        .filter(s => s.manuallyCompleted === 1)
+        .reduce((sum, s) => sum + s.packageCount, 0);
+
+      res.json({
+        totalExpected,
+        totalScanned,
+        percentageScanned: totalExpected > 0 ? Math.round((totalScanned / totalExpected) * 100) : 0,
+        pendingPackages,
+        scannedNotComplete,
+        completedPackages,
+        lastUpdate: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error getting scanning progress:", error);
+      res.status(500).json({ error: "Failed to get scanning progress" });
+    }
+  });
+
   // Update child tracking numbers for a shipment
   app.patch("/api/shipments/:trackingNumber/child-tracking-numbers", async (req, res) => {
     try {
