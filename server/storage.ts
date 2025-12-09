@@ -87,15 +87,20 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Shipment with tracking number ${trackingNumber} not found`);
     }
 
+    // CRITICAL FIX: Merge new child tracking numbers with existing ones (don't replace)
+    // This prevents losing previously imported child tracking numbers when adding new ones
+    const existingChildren = shipment.childTrackingNumbers || [];
+    const mergedChildren = [...new Set([...existingChildren, ...childTrackingNumbers])];
+
     const [updated] = await db
       .update(shipments)
-      .set({ 
-        childTrackingNumbers: childTrackingNumbers,
-        lastUpdate: new Date() 
+      .set({
+        childTrackingNumbers: mergedChildren,
+        lastUpdate: new Date()
       })
       .where(eq(shipments.trackingNumber, trackingNumber))
       .returning();
-    
+
     return updated;
   }
 
