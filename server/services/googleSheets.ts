@@ -80,6 +80,16 @@ export class GoogleSheetsService {
     }
   }
 
+  private escapeSheetName(sheetName: string): string {
+    // If sheet name contains spaces or special characters, wrap it in single quotes
+    if (sheetName.includes(' ') || sheetName.includes('!') || sheetName.includes("'")) {
+      // Escape single quotes within the name by doubling them
+      const escaped = sheetName.replace(/'/g, "''");
+      return `'${escaped}'`;
+    }
+    return sheetName;
+  }
+
   async readShipmentData(spreadsheetId: string, sheetName: string = "Sheet2"): Promise<any[]> {
     if (!this.sheets) {
       throw new Error("Google Sheets service not initialized");
@@ -87,7 +97,7 @@ export class GoogleSheetsService {
 
     try {
       // Read all data starting from row 1 (headers) to get column mappings
-      const range = `${sheetName}!A1:Z`;
+      const range = `${this.escapeSheetName(sheetName)}!A1:Z`;
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId,
         range,
@@ -139,7 +149,7 @@ export class GoogleSheetsService {
 
     try {
       // Read all data from the sheet
-      const range = `${sheetName}!A1:Z`;
+      const range = `${this.escapeSheetName(sheetName)}!A1:Z`;
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId,
         range,

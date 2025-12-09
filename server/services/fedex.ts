@@ -426,7 +426,10 @@ export class FedExService {
         childNumbers.push(...associatedTrackingNumbers);
 
         // Check packageDetails for individual package tracking numbers
-        const packageDetails = result.packageDetails || [];
+        // Ensure packageDetails is always an array (sometimes it's an object or undefined)
+        const packageDetails = Array.isArray(result.packageDetails)
+          ? result.packageDetails
+          : (result.packageDetails ? [result.packageDetails] : []);
         for (const pkg of packageDetails) {
           if (pkg.trackingNumber && !childNumbers.includes(pkg.trackingNumber)) {
             childNumbers.push(pkg.trackingNumber);
@@ -442,7 +445,10 @@ export class FedExService {
         }
 
         // Check for tracking numbers in consolidation and split shipments
-        const consolidationDetail = result.consolidationDetail || [];
+        // Ensure consolidationDetail is always an array
+        const consolidationDetail = Array.isArray(result.consolidationDetail)
+          ? result.consolidationDetail
+          : (result.consolidationDetail ? [result.consolidationDetail] : []);
         for (const detail of consolidationDetail) {
           if (detail.trackingNumber) {
             childNumbers.push(detail.trackingNumber);
