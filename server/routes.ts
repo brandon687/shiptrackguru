@@ -5,8 +5,12 @@ import { insertShipmentSchema, insertScannedSessionSchema } from "@shared/schema
 import { z } from "zod";
 import { googleSheetsService } from "./services/googleSheets";
 import { fedExService } from "./services/fedex";
+import healthRoutes from "./routes/health";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register health check routes
+  app.use(healthRoutes);
+
   // Get all shipments
   app.get("/api/shipments", async (req, res) => {
     try {
