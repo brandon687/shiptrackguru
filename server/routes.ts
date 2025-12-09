@@ -635,7 +635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Mark shipments as completed
+  // Mark shipments as completed (legacy endpoint)
   app.post("/api/shipments/mark-completed", async (req, res) => {
     try {
       const { trackingNumbers } = req.body;
@@ -652,6 +652,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking shipments as completed:", error);
       res.status(500).json({ error: "Failed to mark shipments as completed" });
+    }
+  });
+
+  // Check and mark shipments as completed with conflict detection
+  app.post("/api/shipments/check-and-mark-completed", async (req, res) => {
+    try {
+      const { trackingNumbers } = req.body;
+
+      if (!Array.isArray(trackingNumbers) || trackingNumbers.length === 0) {
+        return res.status(400).json({ error: "trackingNumbers must be a non-empty array" });
+      }
+
+      // Check which ones are already completed
+      const shipments = await storage.getShipmentsByTrackingNumbers(trackingNumbers);
+      const alreadyCompleted = shipments.filter(s => s.manuallyCompleted === 1);
+      const toComplete = shipments.filter(s => s.manuallyCompleted === 0);
+
+      // Mark the uncompleted ones as completed
+      if (toComplete.length > 0) {
+        await storage.markShipmentsAsCompleted(toComplete.map(s => s.trackingNumber));
+      }
+
+      res.json({
+        message: "Shipments processed",
+        count: trackingNumbers.length,
+        newlyCompleted: toComplete.length,
+        alreadyCompleted: alreadyCompleted.map(s => s.trackingNumber)
+      });
+    } catch (error) {
+      console.error("Error checking and marking shipments:", error);
+      res.status(500).json({ error: "Failed to process shipments" });
     }
   });
 

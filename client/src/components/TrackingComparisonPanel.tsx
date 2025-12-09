@@ -62,6 +62,7 @@ export function TrackingComparisonPanel({ allTrackingNumbers, onClose }: Trackin
   const [inputText, setInputText] = useState("");
   const [sessionName, setSessionName] = useState("");
   const [showSavedSessions, setShowSavedSessions] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
   const { toast } = useToast();
   const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -97,9 +98,10 @@ export function TrackingComparisonPanel({ allTrackingNumbers, onClose }: Trackin
     };
   }, [inputText]);
 
-  // Fetch saved sessions
+  // Fetch saved sessions with more frequent polling for multi-user sync
   const { data: savedSessions = [] } = useQuery<ScannedSession[]>({
     queryKey: ["/api/scanned-sessions"],
+    refetchInterval: 3000, // Check for new sessions every 3 seconds
   });
 
   // Parse input tracking numbers (with smart extraction)
@@ -230,20 +232,31 @@ export function TrackingComparisonPanel({ allTrackingNumbers, onClose }: Trackin
     }
   }, [foundInInput.join(',')]); // Use join to create stable dependency
 
-  // Mutation to mark tracking numbers as completed
+  // Mutation to mark tracking numbers as completed with conflict detection
   const markCompletedMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/shipments/mark-completed", {
+      // First check current status to detect conflicts
+      const response = await apiRequest("POST", "/api/shipments/check-and-mark-completed", {
         trackingNumbers: foundInInput,
       });
       return await response.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
-      toast({
-        title: "Marked as Complete",
-        description: `${data.count} shipment(s) marked as delivered/complete.`,
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/tracking-numbers/all"] });
+
+      if (data.alreadyCompleted && data.alreadyCompleted.length > 0) {
+        toast({
+          title: "Partial Update",
+          description: `${data.newlyCompleted} shipment(s) marked complete. ${data.alreadyCompleted.length} were already completed by another user.`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Marked as Complete",
+          description: `${data.count} shipment(s) marked as delivered/complete.`,
+        });
+      }
       onClose();
     },
     onError: (error: Error) => {

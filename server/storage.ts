@@ -1,6 +1,6 @@
 import { type Shipment, type InsertShipment, shipments, type SyncLog, type InsertSyncLog, syncLogs, type ScannedSession, type InsertScannedSession, scannedSessions, type DeliveredShipment, type InsertDeliveredShipment, deliveredShipments } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Shipment operations
@@ -43,6 +43,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(shipments.trackingNumber, trackingNumber))
       .limit(1);
     return results[0];
+  }
+
+  async getShipmentsByTrackingNumbers(trackingNumbers: string[]): Promise<Shipment[]> {
+    if (trackingNumbers.length === 0) return [];
+
+    const results = await db
+      .select()
+      .from(shipments)
+      .where(sql`${shipments.trackingNumber} = ANY(${trackingNumbers})`);
+    return results;
   }
 
   async createShipment(insertShipment: InsertShipment): Promise<Shipment> {
