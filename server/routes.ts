@@ -42,15 +42,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Store active scanning session in memory (resets on server restart)
+  let activeScanningSession = new Set<string>();
+
+  // Update active scanning session
+  app.post("/api/scanning-progress/update", async (req, res) => {
+    try {
+      const { scannedNumbers } = req.body;
+
+      // Update the active session with currently scanned numbers
+      activeScanningSession = new Set(scannedNumbers || []);
+
+      res.json({
+        message: "Scanning session updated",
+        count: activeScanningSession.size
+      });
+    } catch (error) {
+      console.error("Error updating scanning session:", error);
+      res.status(500).json({ error: "Failed to update scanning session" });
+    }
+  });
+
   // Get scanning progress statistics
   app.get("/api/scanning-progress", async (req, res) => {
     try {
       const shipments = await storage.getAllShipments();
-
-      // Get the most recent scanning session to see what's been scanned today
-      const recentSessions = await storage.getAllScannedSessions();
-      const todaySession = recentSessions.length > 0 ? recentSessions[0] : null;
-      const scannedToday = new Set(todaySession?.scannedNumbers || []);
 
       // Calculate total expected tracking numbers (master + children)
       let totalExpected = 0;
@@ -60,9 +76,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Count master tracking number
         totalExpected += 1;
 
-        // Check if this tracking number was scanned in today's session
+        // Check if this tracking number is in the active scanning session
         // OR if it's been marked as complete
-        if (scannedToday.has(shipment.trackingNumber) || shipment.manuallyCompleted === 1) {
+        if (activeScanningSession.has(shipment.trackingNumber) || shipment.manuallyCompleted === 1) {
           totalScanned += 1;
         }
 
@@ -70,8 +86,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (shipment.childTrackingNumbers && shipment.childTrackingNumbers.length > 0) {
           for (const childTracking of shipment.childTrackingNumbers) {
             totalExpected += 1;
-            // Check if child was scanned or if parent is complete
-            if (scannedToday.has(childTracking) || shipment.manuallyCompleted === 1) {
+            // Check if child is in active session or if parent is complete
+            if (activeScanningSession.has(childTracking) || shipment.manuallyCompleted === 1) {
               totalScanned += 1;
             }
           }

@@ -145,6 +145,21 @@ export function TrackingComparisonPanel({ allTrackingNumbers, onClose }: Trackin
     return allTrackingNumbers.filter(num => inputTrackingNumbers.includes(num));
   }, [inputTrackingNumbers, allTrackingNumbers]);
 
+  // Update scanning progress in real-time as user types/scans
+  useEffect(() => {
+    const updateProgress = async () => {
+      try {
+        await apiRequest("POST", "/api/scanning-progress/update", {
+          scannedNumbers: foundInInput,
+        });
+      } catch (error) {
+        console.error("Failed to update scanning progress:", error);
+      }
+    };
+
+    updateProgress();
+  }, [foundInInput]);
+
   const saveSessionMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest("POST", "/api/scanned-sessions", {
